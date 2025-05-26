@@ -2,6 +2,8 @@ from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from .database import Base
 from passlib.context import CryptContext
+from sqlalchemy import Table, Column, Integer, ForeignKey, Enum
+from .database import Base
 
 password_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -12,7 +14,7 @@ class User(Base):
     user_name = Column(String, index=True)
     password = Column(String)
     email = Column(String, unique=True, index=True)
-
+    role = Column(String, default="user")
     pets = relationship("Pet", back_populates="owner", cascade="all, delete-orphan")
 
     def set_password(self, password: str):
@@ -29,19 +31,33 @@ class Breed(Base):
 
     animals = relationship("Pet", back_populates="breed", cascade="all, delete-orphan")
 
-
 class Pet(Base):
     __tablename__ = "pets"
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     age = Column(Integer)
-    # medical_history = Column(String)
     breed_id = Column(Integer, ForeignKey("breeds.id"))
     owner_id = Column(Integer, ForeignKey("users.id"))
 
     breed = relationship("Breed", back_populates="animals")
     owner = relationship("User", back_populates="pets")
-    # appointments = relationship("Appointment", back_populates="appointment_pets", cascade="all, delete-orphan")
+    appointments = relationship("Appointment", back_populates="pet", cascade="all, delete-orphan")
+    medicine_takes = relationship("MedicineTake", back_populates="pet", cascade="all, delete-orphan")
+
+
+class Appointment(Base):
+    __tablename__ = "appointments"
+    id = Column(Integer, primary_key=True, index=True)
+    pet_id = Column(Integer, ForeignKey("pets.id"))
+    scheduled_at = Column(DateTime)
+    clinic_id = Column(Integer, ForeignKey("veterinary_clinics.id"))
+    status = Column(String)
+
+    pet = relationship("Pet", back_populates="appointments")  # ✅ обязательно
+    clinic = relationship("VeterinaryClinic", back_populates="appointments")
+    analyses = relationship("Analysis", back_populates="appointment", cascade="all, delete-orphan")
+    vaccinations = relationship("Vaccination", back_populates="appointment", cascade="all, delete-orphan")
+    conclusion_status = Column(String, default="pending")
 
 
 class VeterinaryClinic(Base):
@@ -53,31 +69,23 @@ class VeterinaryClinic(Base):
 
     appointments = relationship("Appointment", back_populates="clinic")
 
-
-class Appointment(Base):
-    __tablename__ = "appointments"
+class AnalysisType(Base):
+    __tablename__ = "analysis_types"
     id = Column(Integer, primary_key=True, index=True)
-    pet_id = Column(Integer, ForeignKey("pets.id"))
-    scheduled_at = Column(DateTime)
-    clinic_id = Column(Integer, ForeignKey("veterinary_clinics.id"))
-    procedure_type_id = Column(Integer, ForeignKey("procedure_types.id"))
-    status = Column(String)
+    name = Column(String, index=True)
+    description = Column(String)
+    instructions = Column(String)
 
-    # pet = relationship("Pet", back_populates="appointments")
-    clinic = relationship("VeterinaryClinic", back_populates="appointments")
-    procedure_type = relationship("ProcedureType")
-    medical_analyses = relationship("MedicalAnalysis", back_populates="appointment", cascade="all, delete-orphan")
+    analyses = relationship("Analysis", back_populates="analysis_type", cascade="all, delete-orphan")
 
-
-class MedicalAnalysis(Base):
-    __tablename__ = "medical_analyses"
+class Analysis(Base):
+    __tablename__ = "analyses"
     id = Column(Integer, primary_key=True, index=True)
     appointment_id = Column(Integer, ForeignKey("appointments.id"))
-    results = Column(String)
-    recommendations = Column(String)
-    name = Column(String)
+    analysis_type_id = Column(Integer, ForeignKey("analysis_types.id"))
 
-    appointment = relationship("Appointment", back_populates="medical_analyses")
+    appointment = relationship("Appointment", back_populates="analyses")
+    analysis_type = relationship("AnalysisType", back_populates="analyses")
 
 
 class ProcedureType(Base):
@@ -85,13 +93,12 @@ class ProcedureType(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
 
-
 class Vaccine(Base):
     __tablename__ = "vaccines"
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, index=True)
-    description = Column(String)
-    period_days = Column(Integer)
+    name = Column(String)
+    manufacturer = Column(String)
+    type = Column(String)
 
     vaccinations = relationship("Vaccination", back_populates="vaccine", cascade="all, delete-orphan")
 
@@ -99,12 +106,12 @@ class Vaccine(Base):
 class Vaccination(Base):
     __tablename__ = "vaccinations"
     id = Column(Integer, primary_key=True, index=True)
-    # appointment_id = Column(Integer, ForeignKey("appointments.id"))
+    appointment_id = Column(Integer, ForeignKey("appointments.id"))
     vaccine_id = Column(Integer, ForeignKey("vaccines.id"))
     pet_id = Column(Integer, ForeignKey("pets.id"))
-    # appointment = relationship("Appoinment", uselist=False, back_populates="vacination")
 
     vaccine = relationship("Vaccine", back_populates="vaccinations")
+    appointment = relationship("Appointment", back_populates="vaccinations")
 
 
 class Medicine(Base):
@@ -124,3 +131,4 @@ class MedicineTake(Base):
     datetime = Column(DateTime)
 
     medicine = relationship("Medicine", back_populates="medicine_takes")
+    pet = relationship("Pet", back_populates="medicine_takes")

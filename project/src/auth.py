@@ -6,8 +6,11 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from .models import User
+from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import OAuth2PasswordBearer
 
-oauth2scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")
+
 
 def create_access_token(data: dict):
     expire = datetime.utcnow()+timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
@@ -16,10 +19,15 @@ def create_access_token(data: dict):
     print(data_to_encode, SECRET_KEY, ALGORITHM)
     return jwt.encode(data_to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-def get_current_user(token: str, db: Session = Depends(get_db)):
-    exception = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
-                              detail="неудалось проверить данные авторизации",
-                              headers={"WWW-Authenticate": "Bearer"})
+def get_current_user(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="неудалось проверить данные авторизации",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
     try:
         data = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = data.get("email")
@@ -27,8 +35,9 @@ def get_current_user(token: str, db: Session = Depends(get_db)):
             raise exception
     except JWTError:
         raise exception
+
     user = db.query(User).filter(User.email == email).first()
     if user is None:
         raise exception
-    return user
 
+    return user

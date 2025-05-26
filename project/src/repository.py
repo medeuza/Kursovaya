@@ -1,32 +1,41 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from .models import User, Breed, Pet
 from .schemas import  UserCreate, BreedCreate, BreedGet, PetGet, PetCreate
 from .database import get_db
 from .models import (
     VeterinaryClinic, Vaccine, Medicine, ProcedureType,
-    Vaccination, MedicineTake, MedicalAnalysis, Appointment
+    Vaccination, MedicineTake, AnalysisType, Analysis, Appointment
 )
 from .schemas import (
-    ClinicCreate, VaccineCreate, MedicineCreate, ProcedureTypeCreate,
-    VaccinationCreate, MedicineTakeCreate, MedicalAnalysisCreate, AppointmentCreate
+    ClinicCreate, VaccineCreate, MedicineCreate,
+    VaccinationCreate, MedicineTakeCreate, AnalysisTypeCreate, AnalysisCreate , AppointmentCreate
 )
 
-def create_user(db: Session, user_data:UserCreate):
-    db_user = User(user_name=user_data.user_name, email=user_data.email)
+def create_user(db: Session, user_data: UserCreate):
+    db_user = User(
+        user_name=user_data.user_name,
+        email=user_data.email,
+        role=user_data.role  # ← вот это было пропущено
+    )
     db_user.set_password(user_data.password)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
     return db_user
 
-def authenticate(db: Session, email: str, password: str):
-    user = get_user_by_email(db, email)
+
+def authenticate(db: Session, username: str, password: str):
+    user = get_user_by_username(db, username)
     if user is None or not user.check_password(password):
         return None
     return user
 
 def get_user_by_email(db, email):
     user = db.query(User).filter(User.email == email).first()
+    return user
+
+def get_user_by_username(db:Session, username : str):
+    user = db.query(User).filter(User.user_name == username).first()
     return user
 
 def create_breed(db: Session, data: BreedCreate):
@@ -39,6 +48,10 @@ def create_breed(db: Session, data: BreedCreate):
 def get_breed(db: Session, breed_id: int):
     breed = db.query(Breed).filter(id=breed_id).first()
     return breed
+
+def get_breeds(db: Session):
+    breeds = db.query(Breed).all()
+    return breeds
 
 def create_pet(db: Session, data: PetCreate, owner_id: int):
     pet = Pet(name=data.name, age=data.age, breed_id=data.breed_id, owner_id=owner_id)
@@ -80,16 +93,6 @@ def create_medicine(db, data: MedicineCreate):
 def get_medicines(db):
     return db.query(Medicine).all()
 
-def create_procedure_type(db, data: ProcedureTypeCreate):
-    p = ProcedureType(**data.dict())
-    db.add(p)
-    db.commit()
-    db.refresh(p)
-    return p
-
-def get_procedure_types(db):
-    return db.query(ProcedureType).all()
-
 def create_vaccination(db, data: VaccinationCreate):
     record = Vaccination(**data.dict())
     db.add(record)
@@ -98,7 +101,7 @@ def create_vaccination(db, data: VaccinationCreate):
     return record
 
 def get_vaccinations(db):
-    return db.query(Vaccination).all()
+    return db.query(Vaccination).options(joinedload(Vaccination.vaccine)).all()
 
 def create_medicine_take(db, data: MedicineTakeCreate):
     record = MedicineTake(**data.dict())
@@ -110,16 +113,6 @@ def create_medicine_take(db, data: MedicineTakeCreate):
 def get_medicine_takes(db):
     return db.query(MedicineTake).all()
 
-def create_medical_analysis(db, data: MedicalAnalysisCreate):
-    record = MedicalAnalysis(**data.dict())
-    db.add(record)
-    db.commit()
-    db.refresh(record)
-    return record
-
-def get_medical_analyses(db):
-    return db.query(MedicalAnalysis).all()
-
 def create_appointment(db, data: AppointmentCreate):
     record = Appointment(**data.dict())
     db.add(record)
@@ -128,5 +121,69 @@ def create_appointment(db, data: AppointmentCreate):
     return record
 
 def get_appointments(db):
-    return db.query(Appointment).all()
+    appointments = db.query(Appointment).all()
+    result = []
+    for appt in appointments:
+        procedure = None
+        if appt.vaccinations:
+            vaccination = appt.vaccinations[0]
+            procedure = {
+                "type": "Vaccination",
+                "name": vaccination.vaccine.name
+            }
+        elif appt.analyses:
+            analysis = appt.analyses[0]
+            procedure = {
+                "type": "Analysis",
+                "name": analysis.analysis_type.name
+            }
 
+        result.append({
+            "id": appt.id,
+            "pet_id": appt.pet_id,
+            "scheduled_at": appt.scheduled_at,
+            "clinic_id": appt.clinic_id,
+            "status": appt.status,
+            "procedure": procedure,
+            "conclusion_status": appt.conclusion_status  # ← ДОБАВЬ ЭТО
+        })
+    return result
+
+
+def update_entity(db: Session, model, item_id: int, update_data):
+    db_item = db.query(model).filter(model.id == item_id).first()
+    if db_item is None:
+        raise HTTPException(status_code=404, detail=f"{model.__name__} not found")
+    for key, value in update_data.dict().items():
+        setattr(db_item, key, value)
+    db.commit()
+    db.refresh(db_item)
+    return db_item
+
+def delete_entity(db: Session, model, item_id: int):
+    db_item = db.query(model).filter(model.id == item_id).first()
+    if db_item is None:
+        raise HTTPException(status_code=404, detail=f"{model.__name__} not found")
+    db.delete(db_item)
+    db.commit()
+    return {"detail": f"{model.__name__} deleted"}
+
+def create_analysis_type(db: Session, data: AnalysisTypeCreate):
+    record = AnalysisType(**data.dict())
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+def get_analysis_types(db: Session):
+    return db.query(AnalysisType).all()
+
+def create_analysis(db: Session, data: AnalysisCreate):
+    record = Analysis(**data.dict())
+    db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+def get_analyses(db: Session):
+    return db.query(Analysis).all()

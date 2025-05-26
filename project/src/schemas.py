@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from datetime import datetime
 
 class BaseUser(BaseModel):
     user_name: str
@@ -7,11 +8,13 @@ class BaseUser(BaseModel):
 
 class UserGet(BaseUser):
     id: int
+    role: str
     class Config:
         orm_mode=True
 
 class UserCreate(BaseUser):
     password: str
+    role: str
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -27,8 +30,10 @@ class BreedCreate(BaseModel):
 class BreedGet(BaseModel):
     id: int
     name: str
+
     class Config:
-        orm_mode = True
+        from_attributes = True
+
 
 class PetCreate(BaseModel):
     name: str
@@ -41,8 +46,11 @@ class PetGet(BaseModel):
     age: int
     breed_id: int
     owner_id: int
+    breed: Optional[BreedGet]
+
     class Config:
-        orm_mode = True
+        from_attributes = True
+
 
 class ClinicCreate(BaseModel):
     name: str
@@ -56,13 +64,14 @@ class ClinicGet(ClinicCreate):
 
 class VaccineCreate(BaseModel):
     name: str
-    description: str
-    period_days: int
+    type: str
+    manufacturer: str
 
 class VaccineGet(VaccineCreate):
     id: int
     class Config:
         orm_mode = True
+
 
 class MedicineCreate(BaseModel):
     name: str
@@ -73,22 +82,20 @@ class MedicineGet(MedicineCreate):
     class Config:
         orm_mode = True
 
-class ProcedureTypeCreate(BaseModel):
-    name: str
-
-class ProcedureTypeGet(ProcedureTypeCreate):
-    id: int
-    class Config:
-        orm_mode = True
 
 class VaccinationCreate(BaseModel):
     vaccine_id: int
     pet_id: int
+    appointment_id: int
 
 class VaccinationGet(VaccinationCreate):
     id: int
+    appointment_id: Optional[int]
+    vaccine: Optional[VaccineGet]
+
     class Config:
         orm_mode = True
+
 
 class MedicineTakeCreate(BaseModel):
     pet_id: int
@@ -100,25 +107,61 @@ class MedicineTakeGet(MedicineTakeCreate):
     class Config:
         orm_mode = True
 
-class MedicalAnalysisCreate(BaseModel):
-    appointment_id: int
-    results: str
-    recommendations: str
-    name: str
-
-class MedicalAnalysisGet(MedicalAnalysisCreate):
-    id: int
-    class Config:
-        orm_mode = True
 
 class AppointmentCreate(BaseModel):
     pet_id: int
     scheduled_at: str
     clinic_id: int
-    procedure_type_id: int
+    status: str
+    conclusion_status: str
+
+
+class ProcedureSummary(BaseModel):
+    type: str
+    name: str
+
+class AppointmentGet(BaseModel):
+    id: int
+    pet_id: int
+    scheduled_at: datetime
+    clinic_id: Optional[int]
+    status: str
+    procedure: Optional[ProcedureSummary] = None
+    conclusion_status: str
+    class Config:
+        orm_mode = True
+
+
+class AnalysisTypeBase(BaseModel):
+    name: str
+    description: str
+    instructions: str
+
+class AnalysisTypeCreate(AnalysisTypeBase):
+    pass
+
+class AnalysisTypeGet(AnalysisTypeBase):
+    id: int
+
+    class Config:
+        orm_mode = True
+class AnalysisCreate(BaseModel):
+    appointment_id: int
+    analysis_type_id: int
+
+class AnalysisGet(AnalysisCreate):
+    id: int
+    analysis_type: Optional[AnalysisTypeGet]
+
+    class Config:
+        orm_mode = True
+
+class AppointmentGetBase(BaseModel):
+    id: int
+    pet_id: int
+    scheduled_at: datetime
+    clinic_id: int
     status: str
 
-class AppointmentGet(AppointmentCreate):
-    id: int
     class Config:
         orm_mode = True
