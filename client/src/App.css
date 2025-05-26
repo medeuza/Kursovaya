@@ -1,0 +1,155 @@
+/* ===== ОСНОВНОЕ ===== */
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+/* ===== КНОПКИ ===== */
+.custom-btn {
+  display: inline-block;
+  font-family: 'Comfortaa', cursive;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  border-radius: 12px;
+}
+
+.custom-btn:hover {
+  opacity: 0.92;
+  transform: scale(1.02);
+}
+
+/* Edit */
+.custom-btn.pastel-yellow {
+  background-color: #fff1b2;
+  color: #5a3e32;
+  border: 1px solid #cda772;
+  padding: 10px 20px;
+  font-size: 16px;
+}
+
+/* Delete */
+.custom-btn.caramel {
+  background-color: #d39e72;
+  color: white;
+  border: 1px solid #5a3e32;
+  padding: 10px 20px;
+  font-size: 16px;
+}
+
+/* Cancel (модалка) */
+.custom-btn.pastel-pink {
+  background-color: #ffd6dc;
+  color: #3e3e2e;
+  border: 1px solid #f5b9c3;
+  padding: 8px 16px;
+  font-size: 15px;
+}
+
+/* Save / Confirm (модалка) */
+.custom-btn.pastel-green {
+  background-color: #eaffda;
+  color: #3e3e2e;
+  border: 1px solid #c5e1b3;
+  padding: 8px 16px;
+  font-size: 15px;
+}
+
+/* Add внизу */
+.custom-btn.add-small {
+  background-color: #d39e72;
+  color: white;
+  border: 1px solid #5a3e32;
+  padding: 6px 14px;
+  font-size: 14px;
+  width: fit-content;
+}
+
+/* ===== МОДАЛКА ===== */
+.custom-modal .modal-content {
+  background-color: #fefaf1;
+  border-radius: 16px;
+  border: 1px solid #e0c8aa;
+  font-family: 'Comfortaa', cursive;
+}
+
+/* ===== ФОРМЫ ===== */
+.custom-modal .form-control,
+.form-control {
+  background-color: #fef8ef;
+  border-radius: 12px;
+  border: 1px solid #e0c8aa;
+  color: #5a3e32;
+  font-family: 'Comfortaa', cursive;
+}
+
+/* ===== SELECT ===== */
+.react-select-container {
+  font-family: 'Comfortaa', cursive;
+}
+
+.react-select__control {
+  background-color: #fffaf2 !important;
+  border-color: #e7d5c0 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+.react-select__menu {
+  background-color: #fffaf2;
+  border-radius: 8px;
+}
+
+.react-select__option {
+  background-color: #fffaf2 !important;
+  color: #5a3e32;
+  font-family: 'Comfortaa', cursive;
+}
+
+.react-select__option--is-focused {
+  background-color: #fce8c8 !important;
+  color: #5a3e32;
+}
+.react-select__option--is-selected {
+  background-color: #fce8c8 !important;
+  color: #5a3e32 !important;
+}
+
+.react-select__single-value {
+  color: #5a3e32;
+}
