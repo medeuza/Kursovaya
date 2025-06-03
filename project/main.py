@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Security, Body
 from fastapi.middleware.cors import CORSMiddleware
 import os
+from dotenv import load_dotenv
 from openai import OpenAI
 from datetime import datetime
 from fastapi.security import OAuth2PasswordRequestForm
@@ -26,6 +27,8 @@ from src.repository import (
     create_medicine_take, get_medicine_takes,
     create_appointment, get_appointments
 )
+
+load_dotenv()
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI()
