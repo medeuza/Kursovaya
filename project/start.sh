@@ -6,4 +6,4 @@ set -o allexport
 
 source .env set
 
-python3 -m uvicorn src.main:app --reload
+python3 -m uvicorn main:app --reload

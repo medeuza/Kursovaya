@@ -7,13 +7,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
-from .models import Base, User, Pet, Breed, VeterinaryClinic, Appointment, Vaccine, AnalysisType
-from .repository import (create_user, get_user_by_email, authenticate, create_breed, get_breeds, get_breed, create_pet, get_pet, create_analysis_type, get_analysis_types, create_analysis, get_analyses, upptade_pet_recomendations)
-from .database import engine, get_db
+from src.models import Base, User, Pet, Breed, VeterinaryClinic, Appointment, Vaccine, AnalysisType
+from src.repository import (create_user, get_user_by_email, authenticate, create_breed, get_breeds, get_breed, create_pet, get_pet, create_analysis_type, get_analysis_types, create_analysis, get_analyses, upptade_pet_recomendations)
+from src.database import engine, get_db
 from typing import List
-from .auth import create_access_token, get_current_user
+from src.auth import create_access_token, get_current_user
 
-from .schemas import (
+from src.schemas import (
     UserGet, UserCreate, Token, BreedCreate, BreedGet, PetCreate, PetGet,
     AppointmentCreate, AppointmentGet, AnalysisTypeCreate, AnalysisTypeGet,
     AnalysisCreate, AnalysisGet,
@@ -21,7 +21,7 @@ from .schemas import (
     VaccineCreate, VaccineGet, MedicineCreate, MedicineGet, VaccinationCreate, VaccinationGet, MedicineTakeGet,MedicineTakeCreate
 )
 
-from .repository import (
+from src.repository import (
     create_clinic, get_clinics, create_vaccine, get_vaccines, create_medicine, get_medicines, create_vaccination, get_vaccinations,
     create_medicine_take, get_medicine_takes,
     create_appointment, get_appointments
