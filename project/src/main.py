@@ -1,13 +1,14 @@
-from fastapi import FastAPI, Depends, HTTPException, Security
+from fastapi import FastAPI, Depends, HTTPException, Security, Body
 from fastapi.middleware.cors import CORSMiddleware
+import os
+from openai import OpenAI
 from datetime import datetime
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.orm import joinedload
 from .models import Base, User, Pet, Breed, VeterinaryClinic, Appointment, Vaccine, AnalysisType
-from .repository import (create_user, get_user_by_email, authenticate, create_breed, get_breeds, get_breed, create_pet, get_pet, create_analysis_type, get_analysis_types, create_analysis, get_analyses)
-from .schemas import (UserGet, UserCreate, Token,BreedCreate, BreedGet, PetCreate, PetGet,AppointmentCreate, AppointmentGetBase, AnalysisTypeCreate, AnalysisTypeGet, AnalysisTypeCreate, AnalysisTypeGet)
+from .repository import (create_user, get_user_by_email, authenticate, create_breed, get_breeds, get_breed, create_pet, get_pet, create_analysis_type, get_analysis_types, create_analysis, get_analyses, upptade_pet_recomendations)
 from .database import engine, get_db
 from typing import List
 from .auth import create_access_token, get_current_user
@@ -30,6 +31,10 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI()
 origins = ["http://localhost:3000"]
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"], allow_credentials=True)
+
+
+aiclient = OpenAI(api_key=os.environ.get("OPENAI_KEY"))
+
 
 @app.post("/users/register", response_model=UserGet)
 def register(user_data: UserCreate, db: Session = Depends(get_db)):
@@ -76,22 +81,34 @@ def delete_breed(item_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"detail": "Breed deleted"}
 
-
 @app.post("/pets/", response_model=PetGet)
 def add_pet(pet_data: PetCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    return create_pet(db, pet_data, owner_id=current_user.id)
+    pet = create_pet(db, pet_data, owner_id=current_user.id)
+    prompt = f"""
+    ты специалист в области ветеринарии, занимающийся лечением и сопровождением 
+    породистых собак, твоя задача давать рекомендации по питанию для домашних собак.
+    тебе передаются данные о возрасте, породе.
+    предоставь краткие рекомендации по уходу и питанию за этой собакой, не более 350 символов, на англйском языке:
+    порода: {pet.breed.name}
+    возраст(лет): {pet.age}
+    """
+    recommendations = aiclient.responses.create(model="gpt-4.1", input = prompt)
+    pet = upptade_pet_recomendations(db, pet, recommendations.output_text)
+    print(pet.recommendations)
+    pet.recommendations = "ok"
+    return pet
 
-from sqlalchemy.orm import joinedload
+from fastapi import Query
 
 @app.get("/pets/", response_model=list[PetGet])
 def get_my_pets(
+    all: bool = Query(False),
     db: Session = Depends(get_db),
     current_user: User = Security(get_current_user)
 ):
-    return db.query(Pet)\
-        .options(joinedload(Pet.breed))\
-        .filter(Pet.owner_id == current_user.id)\
-        .all()
+    if all:
+        return db.query(Pet).all()
+    return db.query(Pet).filter(Pet.owner_id == current_user.id).all()
 
 @app.put("/pets/{item_id}", response_model=PetGet)
 def update_pet(item_id: int, updated_data: PetCreate, db: Session = Depends(get_db)):
@@ -256,7 +273,7 @@ def delete_medicinetake(item_id: int, db: Session = Depends(get_db)):
     return {"detail": "MedicineTake deleted"}
 
 
-@app.post("/appointments/", response_model=AppointmentGetBase)
+@app.post("/appointments/", response_model=AppointmentGet)
 def add_appointment(data: AppointmentCreate, db: Session = Depends(get_db)):
     if isinstance(data.scheduled_at, str):
         try:
@@ -268,8 +285,36 @@ def add_appointment(data: AppointmentCreate, db: Session = Depends(get_db)):
 
 @app.get("/appointments/", response_model=List[AppointmentGet])
 def list_appointments(db: Session = Depends(get_db)):
-    return get_appointments(db)  # возвращает словари с полем "procedure"
+    return get_appointments(db)
 
+@app.get("/appointments/{item_id}", response_model=AppointmentGet)
+def get_appointment_by_id(item_id: int, db: Session = Depends(get_db)):
+    db_item = db.query(Appointment).filter(Appointment.id == item_id).first()
+    if db_item is None:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    # Собираем procedure, как в get_appointments
+    procedure = None
+    if db_item.vaccinations:
+        procedure = {
+            "type": "Vaccination",
+            "name": db_item.vaccinations[0].vaccine.name
+        }
+    elif db_item.analyses:
+        procedure = {
+            "type": "Analysis",
+            "name": db_item.analyses[0].analysis_type.name
+        }
+
+    return {
+        "id": db_item.id,
+        "pet_id": db_item.pet_id,
+        "scheduled_at": db_item.scheduled_at,
+        "clinic_id": db_item.clinic_id,
+        "status": db_item.status,
+        "procedure": procedure,
+        "conclusion_status": db_item.conclusion_status
+    }
 
 
 @app.put("/appointments/{item_id}", response_model=AppointmentGet)
@@ -286,6 +331,25 @@ def update_appointment_by_id(item_id: int, updated_data: AppointmentCreate, db: 
     db.commit()
     db.refresh(db_item)
     return db_item
+
+@app.patch("/appointments/{item_id}", response_model=AppointmentGet)
+def patch_appointment_status(
+    item_id: int,
+    update_data: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+    appointment = db.query(Appointment).filter(Appointment.id == item_id).first()
+    if not appointment:
+        raise HTTPException(status_code=404, detail="Appointment not found")
+
+    if "status" not in update_data:
+        raise HTTPException(status_code=422, detail="Missing 'status' field")
+
+    appointment.status = update_data["status"]
+    db.commit()
+    db.refresh(appointment)
+    return appointment
+
 
 @app.delete("/appointments/{item_id}", operation_id="delete_appointment_by_id")
 def delete_appointment_by_id(item_id: int, db: Session = Depends(get_db)):
@@ -319,3 +383,5 @@ def add_analysis(data: AnalysisCreate, db: Session = Depends(get_db)):
 @app.get("/analyses/", response_model=List[AnalysisGet])
 def list_analyses(db: Session = Depends(get_db)):
     return get_analyses(db)
+
+# @app.get("")

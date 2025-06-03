@@ -5,6 +5,53 @@ import { useNavigate, Link } from "react-router-dom";
 import Select from "react-select";
 import GlobalStyle from "../GlobalStyle";
 
+const customSelectStyles = {
+  control: (base, state) => ({
+    ...base,
+    backgroundColor: "#fffaf2",
+    borderColor: state.isFocused ? "#dabd9f" : "#e7d5c0",
+    boxShadow: "none",
+    outline: "none",
+    borderRadius: "8px",
+    fontFamily: "Comfortaa, cursive",
+    fontSize: "1rem",
+    "&:hover": {
+      borderColor: "#dabd9f",
+    },
+  }),
+  menu: (base) => ({
+    ...base,
+    backgroundColor: "#fffaf2",
+    color: "#5a3e32",
+    fontFamily: "Comfortaa, cursive",
+    borderRadius: "8px",
+  }),
+  option: (base, { isFocused, isSelected }) => ({
+    ...base,
+    backgroundColor: isSelected
+      ? "#fce8c8"
+      : isFocused
+      ? "#f9e2b0"
+      : "#fffaf2",
+    color: "#5a3e32",
+    cursor: "pointer",
+  }),
+  singleValue: (base) => ({
+    ...base,
+    color: "#5a3e32",
+  }),
+  indicatorSeparator: () => ({
+    display: "none",
+  }),
+  dropdownIndicator: (base) => ({
+    ...base,
+    color: "#b39274",
+    "&:hover": {
+      color: "#a27858",
+    },
+  }),
+};
+
 const VaccinationForm = () => {
   const [vaccines, setVaccines] = useState([]);
   const [filteredOptions, setFilteredOptions] = useState([]);
@@ -87,12 +134,16 @@ const VaccinationForm = () => {
         <Form onSubmit={handleSubmit} className="mb-4">
           <Form.Group className="mb-3">
             <Form.Label>Vaccine Type</Form.Label>
-            <Form.Select value={type} onChange={(e) => setType(e.target.value)}>
-              <option value="">Select type</option>
-              {uniqueTypes.map((t, idx) => (
-                <option key={idx} value={t}>{t}</option>
-              ))}
-            </Form.Select>
+            <Select
+              options={uniqueTypes.map((t) => ({ value: t, label: t }))}
+              value={type ? { value: type, label: type } : null}
+              onChange={(selected) => {
+                setType(selected?.value || "");
+                setSelectedName(null); // сбросить имя при смене типа
+              }}
+              placeholder="Select type"
+              styles={customSelectStyles}
+            />
           </Form.Group>
 
           <Form.Group className="mb-3">
@@ -102,36 +153,7 @@ const VaccinationForm = () => {
               value={filteredOptions.find((o) => o.value === selectedName) || null}
               onChange={(selected) => setSelectedName(selected?.value || null)}
               placeholder="Select vaccine"
-              styles={{
-                control: (base) => ({
-                  ...base,
-                  backgroundColor: "#fffaf2",
-                  borderColor: "#e7d5c0",
-                  color: "#5a3e32",
-                  borderRadius: "8px",
-                  fontFamily: "Comfortaa, cursive",
-                  fontSize: "1rem",
-                  boxShadow: "none",
-                  "&:hover": { borderColor: "#dabd9f" },
-                }),
-                menu: (base) => ({
-                  ...base,
-                  backgroundColor: "#fffaf2",
-                  color: "#5a3e32",
-                  fontFamily: "Comfortaa, cursive",
-                  borderRadius: "8px",
-                }),
-                option: (base, { isFocused }) => ({
-                  ...base,
-                  backgroundColor: isFocused ? "#fce8c8" : "#fffaf2",
-                  color: "#5a3e32",
-                  cursor: "pointer",
-                }),
-                singleValue: (base) => ({
-                  ...base,
-                  color: "#5a3e32",
-                }),
-              }}
+              styles={customSelectStyles}
             />
           </Form.Group>
 

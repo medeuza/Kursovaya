@@ -2,4 +2,6 @@
 venv/
 **/__pycache__/*
 .DS_Store
-.env
+project/.env
+**/*.db
+client/package-lock.json

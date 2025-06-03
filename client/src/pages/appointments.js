@@ -1,24 +1,25 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Form, Button, Nav, Table } from "react-bootstrap";
+import { Form, Button, Nav, Table, Modal } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import GlobalStyle from "../GlobalStyle";
+import { gapi } from "gapi-script";
 
 const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
   <div
     ref={ref}
     onClick={onClick}
     style={{
-      backgroundColor: "#fdf2e9",
-      border: "1px solid #e3c8b1",
+      backgroundColor: "#fffaf2",
+      border: "1px solid #e7d5c0",
       borderRadius: "0.375rem",
       padding: "0.5rem",
       fontSize: "1rem",
       fontFamily: "Comfortaa, sans-serif",
-      color: value ? "#5e4232" : "#a58b7f",
+      color: "#5a3e32",
       cursor: "pointer",
       userSelect: "none",
       marginTop: "0.25rem",
@@ -27,6 +28,11 @@ const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
     {value || "Click to select a date"}
   </div>
 ));
+
+function formatLocalDateTime(date) {
+  const pad = (n) => (n < 10 ? '0' + n : n);
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+}
 
 function AppointmentPage() {
   const navigate = useNavigate();
@@ -41,103 +47,96 @@ function AppointmentPage() {
     clinicId: null,
     status: "pending",
   });
-
-  const unifiedStyle = {
-    backgroundColor: "#fdf2e9",
-    border: "1px solid #e3c8b1",
-    borderRadius: "0.375rem",
-    padding: "0.5rem",
-    fontSize: "1rem",
-    fontFamily: "Comfortaa, sans-serif",
-  };
+  const [editModal, setEditModal] = useState({ show: false, appointment: null });
 
   useEffect(() => {
-    const fetchPets = () => {
-      axios
-        .get("http://127.0.0.1:8000/pets/", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        .then((res) => setPets(res.data))
-        .catch((err) => console.error("Error loading pets:", err));
-    };
+    axios.get("http://127.0.0.1:8000/pets/", {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(res => {
+      setPets(res.data);
+      const petIds = new Set(res.data.map(p => p.id));
 
-    const fetchClinics = () => {
-      axios
-        .get("http://127.0.0.1:8000/clinics/", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        .then((res) => setClinics(res.data))
-        .catch((err) => console.error("Error loading clinics:", err));
-    };
+      axios.get("http://localhost:8000/appointments/", {
+        headers: { Authorization: `Bearer ${token}` },
+      }).then(apptRes => {
+        const filtered = apptRes.data.filter(a => petIds.has(a.pet_id));
+        setAppointments(filtered);
+      });
 
-    const fetchAppointments = () => {
-      axios
-        .get("http://localhost:8000/appointments/", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        })
-        .then((res) => setAppointments(res.data))
-        .catch((err) => console.error("Error loading appointments:", err));
-    };
+    }).catch(console.error);
 
-    fetchPets();
-    fetchClinics();
-    fetchAppointments();
+    axios.get("http://127.0.0.1:8000/clinics/", {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(res => setClinics(res.data)).catch(console.error);
 
-    const selectedId = localStorage.getItem("selected_clinic_id");
-    if (selectedId) {
-      setForm((prev) => ({ ...prev, clinicId: Number(selectedId) }));
-      localStorage.removeItem("selected_clinic_id");
+    const saved = localStorage.getItem("appointment_form");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      setForm({
+        petId: parsed.petId || null,
+        date: parsed.date ? new Date(parsed.date) : null,
+        clinicId: parsed.clinicId || null,
+        status: parsed.status || "pending",
+      });
+      localStorage.removeItem("appointment_form");
     }
   }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.petId || !form.date || !form.clinicId) {
-      alert("Please fill in all required fields: Pet, Date, and Clinic.");
-      return;
-    }
-    const parsedDate = new Date(form.date);
-    if (isNaN(parsedDate.getTime())) {
-      alert("Invalid date selected.");
-      return;
-    }
-    const payload = {
+    if (!form.petId || !form.date || !form.clinicId) return alert("Fill all fields");
+
+    axios.post("http://localhost:8000/appointments/", {
       pet_id: form.petId,
-      scheduled_at: parsedDate.toISOString(),
+      scheduled_at: formatLocalDateTime(form.date),
       clinic_id: form.clinicId,
       status: form.status,
       conclusion_status: "pending"
-    };
-    axios
-      .post("http://localhost:8000/appointments/", payload, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      })
-      .then((res) => {
-        const appointmentId = res.data.id;
-        localStorage.setItem("appointment_id", appointmentId);
-        localStorage.setItem("pet_id", form.petId);
-        navigate("/procedure-type");
-      })
-      .catch((err) => console.error("Error submitting appointment:", err));
+    }, {
+      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    }).then(res => {
+      localStorage.setItem("appointment_id", res.data.id);
+      localStorage.setItem("pet_id", form.petId);
+      navigate("/procedure-type");
+    }).catch(console.error);
   };
 
   const handleDelete = (id) => {
-    if (!window.confirm("Are you sure you want to delete this appointment?")) return;
-    axios
-      .delete(`http://localhost:8000/appointments/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then(() => window.location.reload())
-      .catch((err) => console.error("Delete error:", err));
+    if (!window.confirm("Delete appointment?")) return;
+    axios.delete(`http://localhost:8000/appointments/${id}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    }).then(() => window.location.reload()).catch(console.error);
+  };
+
+  const openEditModal = (appointment) => {
+    setEditModal({
+      show: true,
+      appointment: {
+        ...appointment,
+        date: new Date(appointment.scheduled_at),
+        petId: appointment.pet_id,
+        clinicId: appointment.clinic_id,
+      },
+    });
+  };
+
+  const saveEditedAppointment = () => {
+    const appt = editModal.appointment;
+    axios.put(`http://localhost:8000/appointments/${appt.id}`, {
+      pet_id: appt.petId,
+      scheduled_at: formatLocalDateTime(appt.date),
+      clinic_id: appt.clinicId,
+      status: appt.status,
+      conclusion_status: appt.conclusion_status || "pending"
+    }, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+    }).then(() => {
+      setEditModal({ show: false, appointment: null });
+      window.location.reload();
+    }).catch(console.error);
   };
 
   return (
@@ -148,32 +147,34 @@ function AppointmentPage() {
           <Nav.Item><Nav.Link as={Link} to="/pets">Pets</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/appointments">Appointments</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/vaccinations">Vaccinations</Nav.Link></Nav.Item>
-          <Nav.Item><Nav.Link as={Link} to="/medicines">Medicines</Nav.Link></Nav.Item>
+          {/*<Nav.Item><Nav.Link as={Link} to="/medicines">Medicines</Nav.Link></Nav.Item>*/}
           <Nav.Item><Nav.Link as={Link} to="/analysis">Analyses</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/clinics">Clinics</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/add-missing-data">Additional</Nav.Link></Nav.Item>
+          <Nav.Item><Nav.Link as={Link} to="/mars">Lore</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/">Logout</Nav.Link></Nav.Item>
         </Nav>
 
-        <h2 className="mb-4">Create Appointment 𓃢 </h2>
+        <h2 className="mb-4">Create Appointment 𓃢</h2>
 
         <Form onSubmit={handleSubmit}>
           <Form.Group className="mb-3">
             <Form.Label>Pet</Form.Label>
             <Select
-              options={pets.map((p) => ({ value: p.id, label: p.name }))}
-              onChange={(selected) => setForm({ ...form, petId: selected.value })}
-              placeholder="Select your pet"
-              styles={{
-                control: (base) => ({ ...base, ...unifiedStyle, boxShadow: "none" }),
-                placeholder: (base) => ({ ...base, color: "#7d5a50" }),
-              }}
+              className="mb-2 react-select-container"
+              classNamePrefix="react-select"
+              options={pets.map(p => ({ value: p.id, label: p.name }))}
+              value={
+                pets.find(p => p.id === form.petId)
+                  ? { value: form.petId, label: pets.find(p => p.id === form.petId).name }
+                  : null
+              }
+              onChange={(selected) => setForm({ ...form, petId: selected?.value })}
             />
           </Form.Group>
-
           <Form.Group className="mb-3">
             <Form.Label>Date</Form.Label>
-            <div style={{ display: "block" }}>
+            <div style={{ marginTop: "0.5rem" }}>
               <DatePicker
                 selected={form.date}
                 onChange={(date) => setForm({ ...form, date })}
@@ -181,38 +182,32 @@ function AppointmentPage() {
                 timeFormat="HH:mm"
                 timeIntervals={15}
                 dateFormat="MMMM d, yyyy h:mm aa"
-                placeholderText="Click to select a date"
-                popperPlacement="bottom-start"
-                calendarClassName="custom-datepicker"
                 customInput={<CustomDateInput />}
               />
             </div>
           </Form.Group>
-
           <Form.Group className="mb-3">
             <Form.Label>Clinic</Form.Label>
             <div
-              onClick={() => navigate("/clinics")}
-              style={{ ...unifiedStyle, cursor: "pointer", userSelect: "none" }}
+              onClick={() => {
+                localStorage.setItem("appointment_form", JSON.stringify(form));
+                navigate("/clinics");
+              }}
+              style={{ backgroundColor: "#fffaf2", border: "1px solid #e7d5c0", borderRadius: "8px", padding: "0.5rem", fontFamily: "Comfortaa", fontSize: "1rem", color: "#5a3e32", cursor: "pointer" }}
             >
-              {form.clinicId ? (
-                <>
-                  <strong>{clinics.find((c) => c.id === form.clinicId)?.name}</strong>
-                  <div style={{ fontSize: "0.9rem", color: "#7d5a50" }}>
-                    {clinics.find((c) => c.id === form.clinicId)?.address}
-                  </div>
-                </>
-              ) : (
-                "Click to select clinic"
-              )}
+              {form.clinicId ? clinics.find(c => c.id === form.clinicId)?.name : "Click to select clinic"}
             </div>
           </Form.Group>
 
-          <Button type="submit" className="btn-primary">Next</Button>
+          <Button type="submit" style={{ backgroundColor: "#fff1b8", border: "none", borderRadius: "8px", color: "#5a3e32", fontFamily: "Comfortaa", padding: "0.4rem 1rem" }}>
+            Next
+          </Button>
         </Form>
 
-        <h2 className="mt-5">⊹₊⟡⋆ My Appointments ⊹₊⟡⋆ </h2>
-        <Table striped bordered hover className="custom-table mt-3">
+        <h2 className="mt-5">⋆˙⟡ My Appointments ⋆˙⟡
+        </h2>
+
+        <Table bordered hover className="custom-table mt-3">
           <thead>
             <tr>
               <th>ID</th>
@@ -221,31 +216,103 @@ function AppointmentPage() {
               <th>Clinic</th>
               <th>Conclusion</th>
               <th>Procedure</th>
+              <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {appointments.map((appt) => (
+            {appointments.map(appt => (
               <tr key={appt.id}>
                 <td>{appt.id}</td>
-                <td>{pets.find((p) => p.id === appt.pet_id)?.name || "Unknown"}</td>
+                <td>{pets.find(p => p.id === appt.pet_id)?.name || "Unknown"}</td>
                 <td>{new Date(appt.scheduled_at).toLocaleString()}</td>
-                <td>{clinics.find((c) => c.id === appt.clinic_id)?.name || "Unknown"}</td>
+                <td>{clinics.find(c => c.id === appt.clinic_id)?.name || "Unknown"}</td>
                 <td>{appt.conclusion_status || "–"}</td>
-                <td>
-                  {appt.procedure
-                    ? `${appt.procedure.type}: ${appt.procedure.name}`
-                    : "Check-Up"}
+                <td>{appt.procedure ? `${appt.procedure.type}: ${appt.procedure.name}` : "Check-Up"}</td>
+                <td style={{ fontWeight: "bold", color: appt.status === "completed" ? "green" : "#a67c52" }}>
+                  {appt.status === "completed" ? "✔ Complete" : appt.status}
                 </td>
                 <td>
-                  <Button size="sm" className="btn-edit me-2" onClick={() => alert("Edit not yet implemented")}>Edit</Button>
-                  <Button size="sm" className="btn-delete" onClick={() => handleDelete(appt.id)}>Delete</Button>
+                  <Button size="sm" onClick={() => openEditModal(appt)} style={{ marginRight: '0.5rem', backgroundColor: '#ffe1a8', border: 'none', color: '#5a3e32' }}>Edit</Button>
+                  <Button size="sm" onClick={() => handleDelete(appt.id)} style={{ backgroundColor: '#ffaaa5', border: 'none', color: '#fff' }}>Delete</Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </Table>
-      </div>
+</div>
+
+      <Modal show={editModal.show} onHide={() => setEditModal({ show: false, appointment: null })} centered>
+        <Modal.Header closeButton style={{ fontFamily: 'Comfortaa', backgroundColor: '#fffaf2' }}>
+          <Modal.Title>Edit Appointment</Modal.Title>
+        </Modal.Header>
+        <Modal.Body style={{ backgroundColor: '#fffaf2', fontFamily: 'Comfortaa' }}>
+          {editModal.appointment && (
+            <>
+              <Form.Group className="mb-3">
+                <Form.Label>Pet</Form.Label>
+                <Select
+                  className="mb-2 react-select-container"
+                  classNamePrefix="react-select"
+                  options={pets.map(p => ({ value: p.id, label: p.name }))}
+                  value={pets.find(p => p.id === editModal.appointment.petId)
+                    ? { value: editModal.appointment.petId, label: pets.find(p => p.id === editModal.appointment.petId).name }
+                    : null}
+                  onChange={(selected) =>
+                    setEditModal({
+                      ...editModal,
+                      appointment: { ...editModal.appointment, petId: selected?.value },
+                    })
+                  }
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Date</Form.Label>
+                <div style={{ marginTop: "0.5rem" }}>
+                  <DatePicker
+                    selected={editModal.appointment.date}
+                    onChange={(date) =>
+                      setEditModal({
+                        ...editModal,
+                        appointment: { ...editModal.appointment, date },
+                      })
+                    }
+                    showTimeSelect
+                    timeFormat="HH:mm"
+                    timeIntervals={15}
+                    dateFormat="MMMM d, yyyy h:mm aa"
+                    customInput={<CustomDateInput />}
+                  />
+                </div>
+              </Form.Group>
+
+              <Form.Group className="mb-3">
+                <Form.Label>Clinic</Form.Label>
+                <Select
+                  className="mb-2 react-select-container"
+                  classNamePrefix="react-select"
+                  options={clinics.map(c => ({ value: c.id, label: c.name }))}
+                  value={clinics.find(c => c.id === editModal.appointment.clinicId)
+                    ? { value: editModal.appointment.clinicId, label: clinics.find(c => c.id === editModal.appointment.clinicId).name }
+                    : null}
+                  onChange={(selected) =>
+                    setEditModal({
+                      ...editModal,
+                      appointment: { ...editModal.appointment, clinicId: selected?.value },
+                    })
+                  }
+                />
+              </Form.Group>
+            </>
+          )}
+        </Modal.Body>
+
+        <Modal.Footer style={{ backgroundColor: '#fffaf2' }}>
+          <Button variant="secondary" onClick={() => setEditModal({ show: false, appointment: null })}>Cancel</Button>
+          <Button variant="primary" onClick={saveEditedAppointment}>Save</Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 }

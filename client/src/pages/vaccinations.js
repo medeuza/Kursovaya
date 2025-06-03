@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Table, Alert, Nav, Modal, Button, Form } from "react-bootstrap";
+import { Table, Alert, Nav } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import GlobalStyle from "../GlobalStyle";
 
@@ -10,7 +10,6 @@ function VaccinationsPage() {
   const [pets, setPets] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [error, setError] = useState("");
-  const [editModal, setEditModal] = useState(null);
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -31,13 +30,16 @@ function VaccinationsPage() {
           }),
         ]);
 
-        const allVaccinations = vaccinationRes.data.filter(v => v.appointment_id !== null);
-        setVaccinations(allVaccinations);
+        const myPetIds = new Set(petsRes.data.map(p => p.id));
+        const userAppointments = appointmentsRes.data.filter(a => myPetIds.has(a.pet_id));
+        const userVaccinations = vaccinationRes.data.filter(v => myPetIds.has(v.pet_id));
+
         setVaccines(vaccineRes.data);
         setPets(petsRes.data);
-        setAppointments(appointmentsRes.data);
+        setAppointments(userAppointments);
+        setVaccinations(userVaccinations);
       } catch (err) {
-        console.error("❌ ERROR loading data:", err?.response || err);
+        console.error("ERROR loading data:", err?.response || err);
         setError("Failed to load data");
       }
     };
@@ -57,39 +59,6 @@ function VaccinationsPage() {
     };
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this vaccination?")) return;
-    try {
-      await axios.delete(`http://localhost:8000/vaccinations/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setVaccinations((prev) => prev.filter((v) => v.id !== id));
-    } catch (err) {
-      alert("Failed to delete vaccination.");
-    }
-  };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.put(
-        `http://localhost:8000/vaccinations/${editModal.id}`,
-        {
-          vaccine_id: Number(editModal.vaccine_id),
-          pet_id: Number(editModal.pet_id),
-          appointment_id: Number(editModal.appointment_id),
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setEditModal(null);
-      window.location.reload();
-    } catch (err) {
-      alert("Failed to update vaccination.");
-    }
-  };
-
   return (
     <>
       <GlobalStyle />
@@ -98,14 +67,14 @@ function VaccinationsPage() {
           <Nav.Item><Nav.Link as={Link} to="/pets">Pets</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/appointments">Appointments</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/vaccinations">Vaccinations</Nav.Link></Nav.Item>
-          <Nav.Item><Nav.Link as={Link} to="/medicines">Medicines</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/analysis">Analyses</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/clinics">Clinics</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/add-missing-data">Additional</Nav.Link></Nav.Item>
+          <Nav.Item><Nav.Link as={Link} to="/mars">Lore</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/">Logout</Nav.Link></Nav.Item>
         </Nav>
 
-        <h2 className="mb-4">Vaccination Records ♻ </h2>
+        <h2 className="mb-4">Vaccination Records ♻</h2>
         {error && <Alert variant="danger">{error}</Alert>}
 
         <Table className="custom-table">
@@ -116,8 +85,7 @@ function VaccinationsPage() {
               <th>Time</th>
               <th>Type</th>
               <th>Vaccine Name</th>
-              <th>Edit</th>
-              <th>Delete</th>
+              <th>Conclusion</th>
             </tr>
           </thead>
           <tbody>
@@ -132,57 +100,13 @@ function VaccinationsPage() {
                   <td>{time}</td>
                   <td>{vaccine?.type || "-"}</td>
                   <td>{vaccine?.name || "-"}</td>
-                  <td>
-                    <Button
-                      size="sm"
-                      className="btn-edit me-2"
-                      onClick={() => setEditModal(item)}
-                    >
-                      Edit
-                    </Button>
-                  </td>
-                  <td>
-                    <Button
-                      size="sm"
-                      className="btn-delete"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      Delete
-                    </Button>
-                  </td>
+                  <td>{appointments.find((a) => a.id === item.appointment_id)?.conclusion_status || "pending"}</td>
                 </tr>
               );
             })}
           </tbody>
         </Table>
       </div>
-
-      {/* Edit Modal */}
-      <Modal show={!!editModal} onHide={() => setEditModal(null)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Edit Vaccination</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleEditSubmit}>
-            <Form.Group className="mb-3">
-              <Form.Label>Vaccine</Form.Label>
-              <Form.Select
-                value={editModal?.vaccine_id || ""}
-                onChange={(e) =>
-                  setEditModal((prev) => ({ ...prev, vaccine_id: e.target.value }))
-                }
-              >
-                {vaccines.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name} ({v.type})
-                  </option>
-                ))}
-              </Form.Select>
-            </Form.Group>
-            <Button type="submit" className="btn-primary">Save</Button>
-          </Form>
-        </Modal.Body>
-      </Modal>
     </>
   );
 }

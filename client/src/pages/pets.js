@@ -9,7 +9,7 @@ import "../App.css";
 function PetPage() {
   const [pets, setPets] = useState([]);
   const [breeds, setBreeds] = useState([]);
-  const [newPet, setNewPet] = useState({ name: "", age: "", breed_id: "" });
+  const [newPet, setNewPet] = useState({ name: "", age: "", breed_id: "" , recommendations: "" });
 
   const [editModal, setEditModal] = useState({ show: false, pet: null });
   const [deleteModal, setDeleteModal] = useState({ show: false, petId: null });
@@ -21,7 +21,8 @@ function PetPage() {
       .get("http://127.0.0.1:8000/pets/", {
         headers: { Authorization: `Bearer ${token}` },
       })
-      .then((res) => setPets(res.data))
+      .then((res) => {setPets(res.data);console.log(res.data)})
+      .catch((err) => {console.log(err)})
       .catch((err) => console.error("Error loading pets:", err));
   };
 
@@ -47,7 +48,7 @@ function PetPage() {
         },
       })
       .then(() => {
-        setNewPet({ name: "", age: "", breed_id: "" });
+        setNewPet({ name: "", age: "", breed_id: "" ,  recommendations: "" });
         fetchPets();
       })
       .catch((err) => console.error("Error adding pet:", err));
@@ -97,11 +98,13 @@ function PetPage() {
           <Nav.Item><Nav.Link as={Link} to="/pets">Pets</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/appointments">Appointments</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/vaccinations">Vaccinations</Nav.Link></Nav.Item>
-          <Nav.Item><Nav.Link as={Link} to="/medicines">Medicines</Nav.Link></Nav.Item>
+          {/*<Nav.Item><Nav.Link as={Link} to="/medicines">Medicines</Nav.Link></Nav.Item>*/}
           <Nav.Item><Nav.Link as={Link} to="/analysis">Analyses</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/clinics">Clinics</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/add-missing-data">Additional</Nav.Link></Nav.Item>
+          <Nav.Item><Nav.Link as={Link} to="/mars">Lore</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/">Logout</Nav.Link></Nav.Item>
+
         </Nav>
         <h2>My Pets 𓃡</h2>
         <Table className="custom-table">
@@ -110,8 +113,8 @@ function PetPage() {
               <th>Name</th>
               <th>Age</th>
               <th>Breed</th>
+              <th>Recommendations</th>
               <th>Edit</th>
-              <th>Delete</th>
             </tr>
           </thead>
           <tbody>
@@ -120,11 +123,9 @@ function PetPage() {
                 <td>{pet.name}</td>
                 <td>{pet.age}</td>
                 <td>{pet.breed?.name || "—"}</td>
+                <th>{pet.recommendations || "-"}</th>
                 <td>
                   <div className="custom-btn pastel-yellow" onClick={() => openEditModal(pet)}>Edit</div>
-                </td>
-                <td>
-                  <div className="custom-btn caramel" onClick={() => openDeleteModal(pet.id)}>Delete</div>
                 </td>
               </tr>
             ))}

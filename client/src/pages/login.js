@@ -25,12 +25,21 @@ const LoginPage = () => {
         { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
       );
 
-      const { access_token } = response.data;
-      localStorage.setItem("token", access_token);
+      console.log("🔐 Login response:", response.data);
 
-      const decoded = jwtDecode(access_token);
+      const token = response.data.access_token;
+      if (!token) {
+        setError("No token received. Check API response format.");
+        return;
+      }
+
+      localStorage.setItem("token", token);
+
+      const decoded = jwtDecode(token);
+      console.log("👤 Decoded JWT:", decoded);
+
       if (decoded.role === "service") {
-        navigate("/service-panel");
+        navigate("/select-clinic");
       } else {
         navigate("/pets");
       }

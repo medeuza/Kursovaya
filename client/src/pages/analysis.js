@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Table, Alert, Nav, Modal, Button, Form } from "react-bootstrap";
+import { Table, Alert, Nav } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import GlobalStyle from "../GlobalStyle";
 
@@ -9,7 +9,6 @@ function AnalysisPage() {
   const [pets, setPets] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [error, setError] = useState("");
-  const [editModal, setEditModal] = useState(null); // holds analysis to edit
   const token = localStorage.getItem("token");
 
   useEffect(() => {
@@ -27,9 +26,15 @@ function AnalysisPage() {
           }),
         ]);
 
-        setAnalyses(analysesRes.data);
+        const myPetIds = new Set(petsRes.data.map(p => p.id));
+        const userAppointments = appointmentsRes.data.filter(a => myPetIds.has(a.pet_id));
+        const userAnalyses = analysesRes.data.filter(a =>
+          userAppointments.some(ap => ap.id === a.appointment_id)
+        );
+
         setPets(petsRes.data);
-        setAppointments(appointmentsRes.data);
+        setAppointments(userAppointments);
+        setAnalyses(userAnalyses);
       } catch (err) {
         console.error(err);
         setError("Failed to load data");
@@ -56,38 +61,6 @@ function AnalysisPage() {
     };
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this analysis?")) return;
-    try {
-      await axios.delete(`http://localhost:8000/analyses/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setAnalyses((prev) => prev.filter((a) => a.id !== id));
-    } catch (err) {
-      alert("Failed to delete analysis.");
-    }
-  };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.put(
-        `http://localhost:8000/analyses/${editModal.id}`,
-        {
-          appointment_id: editModal.appointment_id,
-          analysis_type_id: editModal.analysis_type?.id || 1,
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      );
-      setEditModal(null);
-      window.location.reload();
-    } catch (err) {
-      alert("Failed to update analysis.");
-    }
-  };
-
   return (
     <>
       <GlobalStyle />
@@ -96,14 +69,14 @@ function AnalysisPage() {
           <Nav.Item><Nav.Link as={Link} to="/pets">Pets</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/appointments">Appointments</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/vaccinations">Vaccinations</Nav.Link></Nav.Item>
-          <Nav.Item><Nav.Link as={Link} to="/medicines">Medicines</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/analysis">Analyses</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/clinics">Clinics</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/add-missing-data">Additional</Nav.Link></Nav.Item>
+          <Nav.Item><Nav.Link as={Link} to="/mars">Lore</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/">Logout</Nav.Link></Nav.Item>
         </Nav>
 
-        <h2 className="mb-4">Analyses Records ♻ </h2>
+        <h2 className="mb-4">Analyses Records ♻</h2>
         {error && <Alert variant="danger">{error}</Alert>}
 
         <Table className="custom-table">
@@ -115,8 +88,7 @@ function AnalysisPage() {
               <th>Type</th>
               <th>Description</th>
               <th>Instructions</th>
-              <th>Edit</th>
-              <th>Delete</th>
+              <th>Conclusion</th>
             </tr>
           </thead>
           <tbody>
@@ -130,55 +102,13 @@ function AnalysisPage() {
                   <td>{item.analysis_type?.name}</td>
                   <td>{item.analysis_type?.description}</td>
                   <td>{item.analysis_type?.instructions}</td>
-                  <td>
-                    <Button
-                      size="sm"
-                      className="btn-edit me-2"
-                      onClick={() => setEditModal(item)}
-                    >
-                      Edit
-                    </Button>
-                  </td>
-                  <td>
-                    <Button
-                      size="sm"
-                      className="btn-delete"
-                      onClick={() => handleDelete(item.id)}
-                    >
-                      Delete
-                    </Button>
-                  </td>
+                  <td>{appointments.find((a) => a.id === item.appointment_id)?.conclusion_status || "pending"}</td>
                 </tr>
               );
             })}
           </tbody>
         </Table>
       </div>
-
-      {/* Edit Modal */}
-      <Modal show={!!editModal} onHide={() => setEditModal(null)}>
-        <Modal.Header closeButton>
-          <Modal.Title>Edit Analysis</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form onSubmit={handleEditSubmit}>
-            <Form.Group>
-              <Form.Label>Analysis Type ID</Form.Label>
-              <Form.Control
-                type="number"
-                value={editModal?.analysis_type?.id || ""}
-                onChange={(e) =>
-                  setEditModal((prev) => ({
-                    ...prev,
-                    analysis_type: { ...prev.analysis_type, id: Number(e.target.value) },
-                  }))
-                }
-              />
-            </Form.Group>
-            <Button type="submit" className="mt-3 btn-primary">Save</Button>
-          </Form>
-        </Modal.Body>
-      </Modal>
     </>
   );
 }

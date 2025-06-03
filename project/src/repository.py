@@ -63,6 +63,12 @@ def create_pet(db: Session, data: PetCreate, owner_id: int):
 def get_pet(db: Session, pet_id: int):
     return db.query(Pet).filter(Pet.id == pet_id).first()
 
+def upptade_pet_recomendations(db: Session, pet: Pet, recommendations: str):
+    db.query(Pet).filter(Pet.id == pet.id).update({Pet.recommendations: recommendations})
+    db.commit()
+    db.refresh(pet)
+    return pet
+
 def create_clinic(db, data: ClinicCreate):
     clinic = VeterinaryClinic(**data.dict())
     db.add(clinic)
@@ -121,33 +127,38 @@ def create_appointment(db, data: AppointmentCreate):
     return record
 
 def get_appointments(db):
-    appointments = db.query(Appointment).all()
+    appointments = db.query(Appointment).options(
+        joinedload(Appointment.pet),  # загружаем pet.name
+        joinedload(Appointment.vaccinations).joinedload(Vaccination.vaccine),
+        joinedload(Appointment.analyses).joinedload(Analysis.analysis_type)
+    ).all()
+
     result = []
     for appt in appointments:
         procedure = None
         if appt.vaccinations:
-            vaccination = appt.vaccinations[0]
             procedure = {
                 "type": "Vaccination",
-                "name": vaccination.vaccine.name
+                "name": appt.vaccinations[0].vaccine.name
             }
         elif appt.analyses:
-            analysis = appt.analyses[0]
             procedure = {
                 "type": "Analysis",
-                "name": analysis.analysis_type.name
+                "name": appt.analyses[0].analysis_type.name
             }
 
         result.append({
             "id": appt.id,
             "pet_id": appt.pet_id,
+            "pet_name": appt.pet.name if appt.pet else "Unknown",
             "scheduled_at": appt.scheduled_at,
             "clinic_id": appt.clinic_id,
             "status": appt.status,
             "procedure": procedure,
-            "conclusion_status": appt.conclusion_status  # ← ДОБАВЬ ЭТО
+            "conclusion_status": appt.conclusion_status
         })
     return result
+
 
 
 def update_entity(db: Session, model, item_id: int, update_data):

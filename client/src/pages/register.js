@@ -2,10 +2,63 @@ import React, { useState } from "react";
 import { Container, Form, Button, Alert } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import axios from "axios";
+import Select from "react-select";
 import GlobalStyle from "../GlobalStyle";
 
+const customSelectStyles = {
+  control: (base, state) => ({
+    ...base,
+    backgroundColor: "#fffaf2",
+    borderColor: state.isFocused ? "#dabd9f" : "#e7d5c0",
+    boxShadow: "none",
+    outline: "none",
+    borderRadius: "8px",
+    fontFamily: "Comfortaa, cursive",
+    fontSize: "1rem",
+    "&:hover": {
+      borderColor: "#dabd9f",
+    },
+  }),
+  menu: (base) => ({
+    ...base,
+    backgroundColor: "#fffaf2",
+    color: "#5a3e32",
+    fontFamily: "Comfortaa, cursive",
+    borderRadius: "8px",
+  }),
+  option: (base, { isFocused, isSelected }) => ({
+    ...base,
+    backgroundColor: isSelected
+      ? "#fce8c8"
+      : isFocused
+      ? "#f9e2b0"
+      : "#fffaf2",
+    color: "#5a3e32",
+    cursor: "pointer",
+  }),
+  singleValue: (base) => ({
+    ...base,
+    color: "#5a3e32",
+  }),
+  indicatorSeparator: () => ({
+    display: "none",
+  }),
+  dropdownIndicator: (base) => ({
+    ...base,
+    color: "#b39274",
+    "&:hover": {
+      color: "#a27858",
+    },
+  }),
+};
+
+const roleOptions = [
+  { value: "user", label: "User" },
+  { value: "service", label: "Service" },
+];
+
 const RegisterPage = () => {
-  const [role, setRole] = useState("user");
+  const [role, setRole] = useState(roleOptions[0]);
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,7 +80,7 @@ const RegisterPage = () => {
           user_name: username,
           email: email,
           password: password,
-          role: role,
+          role: role.value,
         },
         {
           headers: {
@@ -53,10 +106,13 @@ const RegisterPage = () => {
           <Form onSubmit={handleRegister}>
             <Form.Group className="mb-3">
               <Form.Label>Account Type</Form.Label>
-              <Form.Select value={role} onChange={(e) => setRole(e.target.value)}>
-                <option value="user">User</option>
-                <option value="service">Service</option>
-              </Form.Select>
+              <Select
+                options={roleOptions}
+                value={role}
+                onChange={setRole}
+                placeholder="Select account type"
+                styles={customSelectStyles}
+              />
             </Form.Group>
 
             <Form.Group className="mb-3" controlId="username">

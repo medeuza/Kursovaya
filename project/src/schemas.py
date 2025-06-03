@@ -47,9 +47,10 @@ class PetGet(BaseModel):
     breed_id: int
     owner_id: int
     breed: Optional[BreedGet]
-
-    class Config:
-        from_attributes = True
+    recommendations: Optional[str]
+    #
+    # class Config:
+    #     from_attributes = True
 
 
 class ClinicCreate(BaseModel):
@@ -128,8 +129,10 @@ class AppointmentGet(BaseModel):
     status: str
     procedure: Optional[ProcedureSummary] = None
     conclusion_status: str
+
     class Config:
         orm_mode = True
+
 
 
 class AnalysisTypeBase(BaseModel):

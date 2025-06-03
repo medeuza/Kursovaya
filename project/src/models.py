@@ -36,6 +36,7 @@ class Pet(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, index=True)
     age = Column(Integer)
+    recommendations = Column(String, nullable=True)
     breed_id = Column(Integer, ForeignKey("breeds.id"))
     owner_id = Column(Integer, ForeignKey("users.id"))
 
@@ -43,7 +44,6 @@ class Pet(Base):
     owner = relationship("User", back_populates="pets")
     appointments = relationship("Appointment", back_populates="pet", cascade="all, delete-orphan")
     medicine_takes = relationship("MedicineTake", back_populates="pet", cascade="all, delete-orphan")
-
 
 class Appointment(Base):
     __tablename__ = "appointments"
