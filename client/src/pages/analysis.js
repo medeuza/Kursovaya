@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { Table, Alert, Nav } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import GlobalStyle from "../GlobalStyle";
+import apiClient from "../api/axios";
 
 function AnalysisPage() {
   const [analyses, setAnalyses] = useState([]);
@@ -13,17 +13,12 @@ function AnalysisPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      const headers = { Authorization: `Bearer ${token}` };
       try {
         const [analysesRes, petsRes, appointmentsRes] = await Promise.all([
-          axios.get("http://localhost:8000/analyses/", {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get("http://localhost:8000/pets/", {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
-          axios.get("http://localhost:8000/appointments/", {
-            headers: { Authorization: `Bearer ${token}` },
-          }),
+          apiClient.get("/analyses/", { headers }),
+          apiClient.get("/pets/", { headers }),
+          apiClient.get("/appointments/", { headers }),
         ]);
 
         const myPetIds = new Set(petsRes.data.map(p => p.id));
@@ -61,6 +56,26 @@ function AnalysisPage() {
     };
   };
 
+  const getConclusion = (appointmentId) => {
+    return appointments.find((a) => a.id === appointmentId)?.conclusion || "-";
+  };
+
+  const getStatus = (appointmentId) => {
+    const status = appointments.find((a) => a.id === appointmentId)?.status || "pending";
+    return (
+      <span
+        style={{
+          fontWeight: "normal",
+          color: "#5a3e32",
+          backgroundColor: "transparent",
+          fontFamily: "Comfortaa, sans-serif",
+        }}
+      >
+        {status === "completed" ? "✔ Complete" : status}
+      </span>
+    );
+  };
+
   return (
     <>
       <GlobalStyle />
@@ -88,6 +103,7 @@ function AnalysisPage() {
               <th>Type</th>
               <th>Description</th>
               <th>Instructions</th>
+              <th>Status</th>
               <th>Conclusion</th>
             </tr>
           </thead>
@@ -102,7 +118,8 @@ function AnalysisPage() {
                   <td>{item.analysis_type?.name}</td>
                   <td>{item.analysis_type?.description}</td>
                   <td>{item.analysis_type?.instructions}</td>
-                  <td>{appointments.find((a) => a.id === item.appointment_id)?.conclusion_status || "pending"}</td>
+                  <td>{getStatus(item.appointment_id)}</td>
+                  <td>{getConclusion(item.appointment_id)}</td>
                 </tr>
               );
             })}

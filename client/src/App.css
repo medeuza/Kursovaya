@@ -1,4 +1,3 @@
-/* ===== ОСНОВНОЕ ===== */
 .App {
   text-align: center;
 }
@@ -38,7 +37,6 @@
   color: #61dafb;
 }
 
-/* ===== КНОПКИ ===== */
 .custom-btn {
   display: inline-block;
   font-family: 'Comfortaa', cursive;
@@ -54,7 +52,6 @@
   transform: scale(1.02);
 }
 
-/* Edit */
 .custom-btn.pastel-yellow {
   background-color: #fff1b2;
   color: #5a3e32;
@@ -63,7 +60,6 @@
   font-size: 16px;
 }
 
-/* Delete */
 .custom-btn.caramel {
   background-color: #d39e72;
   color: white;
@@ -72,7 +68,6 @@
   font-size: 16px;
 }
 
-/* Cancel (модалка) */
 .custom-btn.pastel-pink {
   background-color: #ffd6dc;
   color: #3e3e2e;
@@ -81,7 +76,6 @@
   font-size: 15px;
 }
 
-/* Save / Confirm (модалка) */
 .custom-btn.pastel-green {
   background-color: #eaffda;
   color: #3e3e2e;
@@ -90,7 +84,6 @@
   font-size: 15px;
 }
 
-/* Add внизу */
 .custom-btn.add-small {
   background-color: #d39e72;
   color: white;
@@ -100,7 +93,6 @@
   width: fit-content;
 }
 
-/* ===== МОДАЛКА ===== */
 .custom-modal .modal-content {
   background-color: #fefaf1;
   border-radius: 16px;
@@ -108,7 +100,6 @@
   font-family: 'Comfortaa', cursive;
 }
 
-/* ===== ФОРМЫ ===== */
 .custom-modal .form-control,
 .form-control {
   background-color: #fef8ef;
@@ -118,7 +109,6 @@
   font-family: 'Comfortaa', cursive;
 }
 
-/* ===== SELECT ===== */
 .react-select-container {
   font-family: 'Comfortaa', cursive;
 }

@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import { Form, Button, Nav, Table, Modal } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
 import Select from "react-select";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import GlobalStyle from "../GlobalStyle";
-import { gapi } from "gapi-script";
+import apiClient from "../api/axios";
 
 const CustomDateInput = React.forwardRef(({ value, onClick }, ref) => (
   <div
@@ -50,24 +49,18 @@ function AppointmentPage() {
   const [editModal, setEditModal] = useState({ show: false, appointment: null });
 
   useEffect(() => {
-    axios.get("http://127.0.0.1:8000/pets/", {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(res => {
+    apiClient.get("/pets/", { headers: { Authorization: `Bearer ${token}` } }).then(res => {
       setPets(res.data);
       const petIds = new Set(res.data.map(p => p.id));
 
-      axios.get("http://localhost:8000/appointments/", {
-        headers: { Authorization: `Bearer ${token}` },
-      }).then(apptRes => {
+      apiClient.get("/appointments/", { headers: { Authorization: `Bearer ${token}` } }).then(apptRes => {
         const filtered = apptRes.data.filter(a => petIds.has(a.pet_id));
         setAppointments(filtered);
       });
 
     }).catch(console.error);
 
-    axios.get("http://127.0.0.1:8000/clinics/", {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(res => setClinics(res.data)).catch(console.error);
+    apiClient.get("/clinics/", { headers: { Authorization: `Bearer ${token}` } }).then(res => setClinics(res.data)).catch(console.error);
 
     const saved = localStorage.getItem("appointment_form");
     if (saved) {
@@ -81,32 +74,42 @@ function AppointmentPage() {
       localStorage.removeItem("appointment_form");
     }
   }, []);
-
   const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!form.petId || !form.date || !form.clinicId) return alert("Fill all fields");
-
-    axios.post("http://localhost:8000/appointments/", {
-      pet_id: form.petId,
-      scheduled_at: formatLocalDateTime(form.date),
-      clinic_id: form.clinicId,
-      status: form.status,
-      conclusion_status: "pending"
-    }, {
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-    }).then(res => {
+  e.preventDefault();
+  if (!form.petId || !form.date || !form.clinicId) {
+    alert("Fill all fields");
+    return;
+  }
+  apiClient.post("/appointments/",
+      {
+        pet_id: form.petId,
+        scheduled_at: formatLocalDateTime(form.date),
+        clinic_id: form.clinicId,
+        status: form.status,
+        conclusion_status: "pending",
+      },
+      {
+        headers: {Authorization: `Bearer ${token}`, "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((res) => {
       localStorage.setItem("appointment_id", res.data.id);
       localStorage.setItem("pet_id", form.petId);
       navigate("/procedure-type");
-    }).catch(console.error);
+    })
+    .catch(console.error);
   };
 
   const handleDelete = (id) => {
     if (!window.confirm("Delete appointment?")) return;
-    axios.delete(`http://localhost:8000/appointments/${id}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    }).then(() => window.location.reload()).catch(console.error);
+    apiClient.delete(`/appointments/${id}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,},})
+    .then(() => window.location.reload())
+    .catch(console.error);
   };
+
 
   const openEditModal = (appointment) => {
     setEditModal({
@@ -122,18 +125,23 @@ function AppointmentPage() {
 
   const saveEditedAppointment = () => {
     const appt = editModal.appointment;
-    axios.put(`http://localhost:8000/appointments/${appt.id}`, {
+    apiClient.put(
+    `/appointments/${appt.id}`,
+    {
       pet_id: appt.petId,
       scheduled_at: formatLocalDateTime(appt.date),
       clinic_id: appt.clinicId,
       status: appt.status,
-      conclusion_status: appt.conclusion_status || "pending"
-    }, {
+      conclusion_status: appt.conclusion_status || "pending",
+      conclusion: appt.conclusion || "",
+    },
+    {
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
-    }).then(() => {
+    }
+  ).then(() => {
       setEditModal({ show: false, appointment: null });
       window.location.reload();
     }).catch(console.error);
@@ -206,7 +214,6 @@ function AppointmentPage() {
 
         <h2 className="mt-5">⋆˙⟡ My Appointments ⋆˙⟡
         </h2>
-
         <Table bordered hover className="custom-table mt-3">
           <thead>
             <tr>
@@ -214,9 +221,9 @@ function AppointmentPage() {
               <th>Pet</th>
               <th>Date</th>
               <th>Clinic</th>
-              <th>Conclusion</th>
               <th>Procedure</th>
               <th>Status</th>
+              <th>Conclusion</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -227,21 +234,32 @@ function AppointmentPage() {
                 <td>{pets.find(p => p.id === appt.pet_id)?.name || "Unknown"}</td>
                 <td>{new Date(appt.scheduled_at).toLocaleString()}</td>
                 <td>{clinics.find(c => c.id === appt.clinic_id)?.name || "Unknown"}</td>
-                <td>{appt.conclusion_status || "–"}</td>
                 <td>{appt.procedure ? `${appt.procedure.type}: ${appt.procedure.name}` : "Check-Up"}</td>
                 <td style={{ fontWeight: "bold", color: appt.status === "completed" ? "green" : "#a67c52" }}>
                   {appt.status === "completed" ? "✔ Complete" : appt.status}
                 </td>
+                <td>{appt.conclusion || "–"}</td>
                 <td>
-                  <Button size="sm" onClick={() => openEditModal(appt)} style={{ marginRight: '0.5rem', backgroundColor: '#ffe1a8', border: 'none', color: '#5a3e32' }}>Edit</Button>
-                  <Button size="sm" onClick={() => handleDelete(appt.id)} style={{ backgroundColor: '#ffaaa5', border: 'none', color: '#fff' }}>Delete</Button>
+                  <Button
+                    size="sm"
+                    onClick={() => openEditModal(appt)}
+                    style={{ marginRight: '0.5rem', backgroundColor: '#ffe1a8', border: 'none', color: '#5a3e32' }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleDelete(appt.id)}
+                    style={{ backgroundColor: '#ffaaa5', border: 'none', color: '#fff' }}
+                  >
+                    Delete
+                  </Button>
                 </td>
               </tr>
             ))}
           </tbody>
         </Table>
-</div>
-
+        </div>
       <Modal show={editModal.show} onHide={() => setEditModal({ show: false, appointment: null })} centered>
         <Modal.Header closeButton style={{ fontFamily: 'Comfortaa', backgroundColor: '#fffaf2' }}>
           <Modal.Title>Edit Appointment</Modal.Title>
@@ -304,6 +322,21 @@ function AppointmentPage() {
                   }
                 />
               </Form.Group>
+          <Form.Group className="mb-3">
+              <Form.Label>Conclusion</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={editModal.appointment.conclusion || ""}
+                onChange={(e) =>
+                  setEditModal({
+                    ...editModal,
+                    appointment: { ...editModal.appointment, conclusion: e.target.value },
+                  })
+                }
+              />
+        </Form.Group>
+
             </>
           )}
         </Modal.Body>

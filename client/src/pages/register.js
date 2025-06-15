@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Container, Form, Button, Alert } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import Select from "react-select";
 import GlobalStyle from "../GlobalStyle";
+import apiClient from "../api/axios";
 
 const customSelectStyles = {
   control: (base, state) => ({
@@ -74,20 +74,16 @@ const RegisterPage = () => {
     }
 
     try {
-      await axios.post(
-        "http://localhost:8000/users/register",
-        {
-          user_name: username,
-          email: email,
-          password: password,
-          role: role.value,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      await apiClient.post("/users/register",
+  {
+    user_name: username,
+    email: email,
+    password: password,
+    role: role.value,
+  },
+  {
+    headers: {
+      "Content-Type": "application/json",},});;
       navigate("/");
     } catch (err) {
       console.error(err);

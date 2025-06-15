@@ -14,10 +14,10 @@ from src.database import engine, get_db
 from typing import List
 from src.auth import create_access_token, get_current_user
 
-from src.schemas import (
+from src.schemas import (RecommendationRequest, RecommendationResponse,
     UserGet, UserCreate, Token, BreedCreate, BreedGet, PetCreate, PetGet,
     AppointmentCreate, AppointmentGet, AnalysisTypeCreate, AnalysisTypeGet,
-    AnalysisCreate, AnalysisGet,
+    AnalysisCreate, AnalysisGet,AppointmentPatch,
     ClinicCreate, ClinicGet,
     VaccineCreate, VaccineGet, MedicineCreate, MedicineGet, VaccinationCreate, VaccinationGet, MedicineTakeGet,MedicineTakeCreate
 )
@@ -27,14 +27,15 @@ from src.repository import (
     create_medicine_take, get_medicine_takes,
     create_appointment, get_appointments
 )
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
 Base.metadata.create_all(bind=engine)
 app = FastAPI()
-origins = ["http://localhost:3000"]
+origins = os.environ.get('ORIGINS').split(',')
 app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["*"], allow_headers=["*"], allow_credentials=True)
-
+app.router.redirect_slashes = False
 
 aiclient = OpenAI(api_key=os.environ.get("OPENAI_KEY"))
 
@@ -84,22 +85,33 @@ def delete_breed(item_id: int, db: Session = Depends(get_db)):
     db.commit()
     return {"detail": "Breed deleted"}
 
-@app.post("/pets/", response_model=PetGet)
-def add_pet(pet_data: PetCreate, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    pet = create_pet(db, pet_data, owner_id=current_user.id)
+@app.post("/recommendations/", response_model=RecommendationResponse)
+def get_recommendations(req: RecommendationRequest, db: Session = Depends(get_db)):
+    breed = db.query(Breed).filter(Breed.id == req.breed_id).first()
+    if not breed:
+        raise HTTPException(status_code=404, detail="Breed not found")
+
     prompt = f"""
     ты специалист в области ветеринарии, занимающийся лечением и сопровождением 
     породистых собак, твоя задача давать рекомендации по питанию для домашних собак.
     тебе передаются данные о возрасте, породе.
-    предоставь краткие рекомендации по уходу и питанию за этой собакой, не более 350 символов, на англйском языке:
-    порода: {pet.breed.name}
-    возраст(лет): {pet.age}
+    предоставь краткие рекомендации по уходу и питанию за этой собакой, не более 350 символов, на английском языке:
+    порода: {breed.name}
+    возраст(лет): {req.age}
     """
-    recommendations = aiclient.responses.create(model="gpt-4.1", input = prompt)
-    pet = upptade_pet_recomendations(db, pet, recommendations.output_text)
-    print(pet.recommendations)
-    pet.recommendations = "ok"
-    return pet
+    recommendations = aiclient.responses.create(model="gpt-4.1", input=prompt)
+    return {"recommendations": recommendations.output_text}
+
+
+
+@app.post("/recommendations/", response_model=RecommendationResponse)
+def get_recommendations(request: RecommendationRequest, db: Session = Depends(get_db)):
+    breed = db.query(Breed).filter(Breed.id == request.breed_id).first()
+    if not breed:
+        raise HTTPException(status_code=404, detail="Breed not found")
+    recommendations = generate_pet_recommendation(request.age, breed.name)
+    return {"recommendations": recommendations}
+
 
 from fastapi import Query
 
@@ -296,7 +308,6 @@ def get_appointment_by_id(item_id: int, db: Session = Depends(get_db)):
     if db_item is None:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    # Собираем procedure, как в get_appointments
     procedure = None
     if db_item.vaccinations:
         procedure = {
@@ -336,22 +347,23 @@ def update_appointment_by_id(item_id: int, updated_data: AppointmentCreate, db: 
     return db_item
 
 @app.patch("/appointments/{item_id}", response_model=AppointmentGet)
-def patch_appointment_status(
+def patch_appointment(
     item_id: int,
-    update_data: dict = Body(...),
+    update_data: AppointmentPatch,
     db: Session = Depends(get_db)
 ):
     appointment = db.query(Appointment).filter(Appointment.id == item_id).first()
     if not appointment:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    if "status" not in update_data:
-        raise HTTPException(status_code=422, detail="Missing 'status' field")
+    update_dict = update_data.dict(exclude_unset=True)
+    for key, value in update_dict.items():
+        setattr(appointment, key, value)
 
-    appointment.status = update_data["status"]
     db.commit()
     db.refresh(appointment)
     return appointment
+
 
 
 @app.delete("/appointments/{item_id}", operation_id="delete_appointment_by_id")

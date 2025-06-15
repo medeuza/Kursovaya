@@ -1,16 +1,15 @@
 import React, { useState } from "react";
 import { Container, Form, Button, Alert } from "react-bootstrap";
 import { Link, useNavigate } from "react-router-dom";
-import axios from "axios";
 import { jwtDecode } from "jwt-decode";
 import GlobalStyle from "../GlobalStyle";
+import apiClient from "../api/axios";
 
 const LoginPage = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
-
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!username || !password) {
@@ -19,11 +18,9 @@ const LoginPage = () => {
     }
 
     try {
-      const response = await axios.post(
-        "http://localhost:8000/users/login",
-        new URLSearchParams({ username, password }),
-        { headers: { "Content-Type": "application/x-www-form-urlencoded" } }
-      );
+      const response = await apiClient.post("/users/login",
+          new URLSearchParams({ username, password }),
+          {headers: {"Content-Type": "application/x-www-form-urlencoded",},});
 
       console.log("🔐 Login response:", response.data);
 

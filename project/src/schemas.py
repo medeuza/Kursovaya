@@ -109,31 +109,9 @@ class MedicineTakeGet(MedicineTakeCreate):
         orm_mode = True
 
 
-class AppointmentCreate(BaseModel):
-    pet_id: int
-    scheduled_at: str
-    clinic_id: int
-    status: str
-    conclusion_status: str
-
-
 class ProcedureSummary(BaseModel):
     type: str
     name: str
-
-class AppointmentGet(BaseModel):
-    id: int
-    pet_id: int
-    scheduled_at: datetime
-    clinic_id: Optional[int]
-    status: str
-    procedure: Optional[ProcedureSummary] = None
-    conclusion_status: str
-
-    class Config:
-        orm_mode = True
-
-
 
 class AnalysisTypeBase(BaseModel):
     name: str
@@ -168,3 +146,37 @@ class AppointmentGetBase(BaseModel):
 
     class Config:
         orm_mode = True
+
+class AppointmentPatch(BaseModel):
+    status: Optional[str] = None
+    conclusion: Optional[str] = None
+
+
+class AppointmentGet(BaseModel):
+    id: int
+    pet_id: int
+    scheduled_at: datetime
+    clinic_id: Optional[int]
+    status: str
+    procedure: Optional[ProcedureSummary] = None
+    conclusion_status: str
+    conclusion: Optional[str] = None
+
+    class Config:
+        orm_mode = True
+
+class AppointmentCreate(BaseModel):
+    pet_id: int
+    scheduled_at: str
+    clinic_id: int
+    status: str
+    conclusion_status: str
+    conclusion: Optional[str] = None
+
+class RecommendationRequest(BaseModel):
+    age: int
+    breed_id: int
+
+class RecommendationResponse(BaseModel):
+    recommendations: str
+

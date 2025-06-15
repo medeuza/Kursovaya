@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { Table, Alert, Nav } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import GlobalStyle from "../GlobalStyle";
+import apiClient from "../api/axios";
 
 function VaccinationsPage() {
   const [vaccinations, setVaccinations] = useState([]);
@@ -16,16 +16,16 @@ function VaccinationsPage() {
     const fetchData = async () => {
       try {
         const [vaccinationRes, vaccineRes, petsRes, appointmentsRes] = await Promise.all([
-          axios.get("http://localhost:8000/vaccinations/", {
+          apiClient.get("/vaccinations/", {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get("http://localhost:8000/vaccines/", {
+          apiClient.get("/vaccines/", {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get("http://localhost:8000/pets/", {
+          apiClient.get("/pets/", {
             headers: { Authorization: `Bearer ${token}` },
           }),
-          axios.get("http://localhost:8000/appointments/", {
+          apiClient.get("/appointments/", {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -85,6 +85,7 @@ function VaccinationsPage() {
               <th>Time</th>
               <th>Type</th>
               <th>Vaccine Name</th>
+              <th>Status</th>
               <th>Conclusion</th>
             </tr>
           </thead>
@@ -92,6 +93,7 @@ function VaccinationsPage() {
             {vaccinations.map((item) => {
               const vaccine = vaccines.find((v) => v.id === item.vaccine_id);
               const { date, time } = getAppointmentDateTime(item.appointment_id);
+              const appointment = appointments.find((a) => a.id === item.appointment_id);
 
               return (
                 <tr key={item.id}>
@@ -100,7 +102,8 @@ function VaccinationsPage() {
                   <td>{time}</td>
                   <td>{vaccine?.type || "-"}</td>
                   <td>{vaccine?.name || "-"}</td>
-                  <td>{appointments.find((a) => a.id === item.appointment_id)?.conclusion_status || "pending"}</td>
+                  <td>{appointment?.status === "completed" ? "✔ Completed" : "Pending"}</td>
+                  <td>{appointment?.conclusion || "–"}</td>
                 </tr>
               );
             })}

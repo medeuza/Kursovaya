@@ -1,4 +1,3 @@
-// GlobalStyle.js
 import { createGlobalStyle } from "styled-components";
 import "@fontsource/comfortaa";
 

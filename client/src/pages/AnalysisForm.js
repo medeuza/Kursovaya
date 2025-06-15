@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { Form, Button, Container, Alert, Nav } from "react-bootstrap";
 import { useNavigate, Link } from "react-router-dom";
 import Select from "react-select";
 import GlobalStyle from "../GlobalStyle";
+import apiClient from "../api/axios";
 
 const AnalysisForm = () => {
   const [analysisTypes, setAnalysisTypes] = useState([]);
@@ -15,44 +15,45 @@ const AnalysisForm = () => {
   const appointmentId = localStorage.getItem("appointment_id");
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8000/analysis-types/", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
+    const fetchAnalysisTypes = async () => {
+      try {
+        const headers = { Authorization: `Bearer ${token}` };
+        const res = await apiClient.get("/analysis-types/", { headers });
         setAnalysisTypes(res.data);
         setLoading(false);
-      })
-      .catch((err) => {
+      } catch (err) {
         console.error(err);
         setError("Failed to load analysis types");
         setLoading(false);
-      });
-  }, [token]);
+      }
+    };
+      fetchAnalysisTypes();
+    }, [token]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!selectedId) {
       setError("Please select an analysis type.");
       return;
     }
-    axios
-      .post(
-        "http://localhost:8000/analyses/",
+
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await apiClient.post(
+        "/analyses/",
         {
           appointment_id: Number(appointmentId),
           analysis_type_id: Number(selectedId),
         },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      )
-      .then(() => navigate("/appointments"))
-      .catch((err) => {
-        console.error(err);
-        setError("Failed to save analysis");
-      });
+        { headers }
+      );
+      navigate("/appointments");
+    } catch (err) {
+      console.error(err);
+      setError("Failed to save analysis");
+    }
   };
+
 
   return (
     <>

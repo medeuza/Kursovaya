@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Container, Row, Col } from "react-bootstrap";
 import GlobalStyle from "../GlobalStyle";
+import apiClient from "../api/axios";
 
 const ProcedureTypePage = () => {
   const navigate = useNavigate();

@@ -15,7 +15,7 @@ def create_user(db: Session, user_data: UserCreate):
     db_user = User(
         user_name=user_data.user_name,
         email=user_data.email,
-        role=user_data.role  # ← вот это было пропущено
+        role=user_data.role
     )
     db_user.set_password(user_data.password)
     db.add(db_user)
@@ -128,7 +128,7 @@ def create_appointment(db, data: AppointmentCreate):
 
 def get_appointments(db):
     appointments = db.query(Appointment).options(
-        joinedload(Appointment.pet),  # загружаем pet.name
+        joinedload(Appointment.pet),
         joinedload(Appointment.vaccinations).joinedload(Vaccination.vaccine),
         joinedload(Appointment.analyses).joinedload(Analysis.analysis_type)
     ).all()
@@ -155,7 +155,9 @@ def get_appointments(db):
             "clinic_id": appt.clinic_id,
             "status": appt.status,
             "procedure": procedure,
-            "conclusion_status": appt.conclusion_status
+            "conclusion_status": appt.conclusion_status,
+            "conclusion": appt.conclusion
+
         })
     return result
 

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import { Form, Button, Container, Nav, Table } from "react-bootstrap";
 import Select from "react-select";
 import GlobalStyle from "../GlobalStyle";
 import { Map, Placemark, useYMaps } from "@pbe/react-yandex-maps";
+import apiClient from "../api/axios";
 
 function SelectClinic() {
   const [clinics, setClinics] = useState([]);
@@ -15,11 +15,8 @@ function SelectClinic() {
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8000/clinics/", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
+    apiClient.get("/clinics/", {headers: {Authorization: `Bearer ${token}`,},})
+        .then((res) => {
         setClinics(res.data);
       })
       .catch((err) => console.error("Error loading clinics:", err));
@@ -46,6 +43,13 @@ function SelectClinic() {
 
     setSelectedClinic(clinic);
   };
+    const tableCellStyle = {
+      color: "#5a3e32",
+      border: "1px solid #e6d4c3",
+      padding: "12px",
+      verticalAlign: "middle",
+      backgroundColor: "#fff8ec",
+    };
 
   const handleContinue = () => {
     if (selectedClinic) {
@@ -103,19 +107,46 @@ function SelectClinic() {
 
         {selectedClinic && (
           <>
-            <Table bordered hover>
+          <Table
+              bordered
+              responsive
+              style={{
+                fontFamily: "Comfortaa, sans-serif",
+                backgroundColor: "#fffaf2",
+                borderCollapse: "separate",
+                borderSpacing: "0 6px",
+                marginTop: "1rem",
+              }}
+            >
               <thead>
-                <tr><th>ID</th><th>Name</th><th>Address</th><th>Phone</th></tr>
+                <tr>
+                  {["ID", "Name", "Address", "Phone"].map((title) => (
+                    <th
+                      key={title}
+                      style={{
+                        backgroundColor: "#fcebd5",
+                        color: "#5a3e32",
+                        border: "1px solid #e6d4c3",
+                        padding: "12px",
+                        textAlign: "center",
+                        fontWeight: 600,
+                      }}
+                    >
+                      {title}
+                    </th>
+                  ))}
+                </tr>
               </thead>
               <tbody>
-                <tr>
-                  <td>{selectedClinic.id}</td>
-                  <td>{selectedClinic.name}</td>
-                  <td>{selectedClinic.address}</td>
-                  <td>{selectedClinic.phone}</td>
+                <tr style={{ backgroundColor: "#fff8ec" }}>
+                  <td style={tableCellStyle}>{selectedClinic.id}</td>
+                  <td style={tableCellStyle}>{selectedClinic.name}</td>
+                  <td style={tableCellStyle}>{selectedClinic.address}</td>
+                  <td style={tableCellStyle}>{selectedClinic.phone}</td>
                 </tr>
               </tbody>
             </Table>
+
 
             {selectedClinic.coords && (
               <Map state={{ center: selectedClinic.coords, zoom: 14 }} width="100%" height="400px">

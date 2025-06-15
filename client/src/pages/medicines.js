@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { Table, Button, Form, Nav } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import GlobalStyle from "../GlobalStyle";
+import apiClient from "../api/axios";
 
 const MedicinePage = () => {
   const [medicines, setMedicines] = useState([]);
@@ -14,11 +14,8 @@ const MedicinePage = () => {
 
   const fetchMedicines = async () => {
     try {
-      const response = await axios.get("http://localhost:8000/medicines/", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await apiClient.get("/medicines/",
+          {headers: {Authorization: `Bearer ${token}`,},});
       setMedicines(response.data);
     } catch (err) {
       console.error(err);
@@ -28,12 +25,9 @@ const MedicinePage = () => {
 
   const handleAddMedicine = async () => {
     try {
-      await axios.post("http://localhost:8000/medicines/", newMedicine, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-      });
+      await apiClient.post("/medicines/", newMedicine, {
+        headers: {Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",},});
       setShowModal(false);
       setNewMedicine({ name: "", usage: "" });
       fetchMedicines();
@@ -42,11 +36,9 @@ const MedicinePage = () => {
       setError("Error adding medicine.");
     }
   };
-
   useEffect(() => {
     fetchMedicines();
   }, []);
-
   return (
     <>
       <GlobalStyle />

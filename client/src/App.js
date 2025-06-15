@@ -1,4 +1,3 @@
-// src/App.js
 import "./App.css";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import {YMaps} from "@pbe/react-yandex-maps";
@@ -34,29 +33,23 @@ function App() {
     <YMaps query={{apikey: "d47a1fd6-4f22-4cd2-9e04-4b94003f3663", load: "package.full"}}>
     <Router>
       <Routes>
-        {/* Аутентификация */}
         <Route path="/" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
 
-        {/* Основные разделы */}
         <Route path="/pets" element={<PetPage />} />
         <Route path="/appointments" element={<AppointmentPage />} />
         <Route path="/medicines" element={<MedicinesPage />} />
         <Route path="/clinics" element={<ClinicsPage />} />
 
-        {/* Просмотр */}
         <Route path="/vaccinations" element={<VaccinationsPage />} />
         <Route path="/analysis" element={<AnalysisPage />} />
 
-        {/* Процедуры и формы */}
         <Route path="/procedure-type" element={<ProcedureTypePage />} />
         <Route path="/vaccination-form" element={<VaccinationForm />} />
         <Route path="/analysis-form" element={<AnalysisForm />} />
 
-        {/* Добавление недостающих данных */}
         <Route path="/add-missing-data" element={<AddDataPage />} />
 
-        {/* Выбор клиники → услуги */}
         <Route path="/service-panel" element={<ServicePanel />} />
         <Route path="/select-clinic" element={<SelectClinic />} />
         <Route path="/services" element={<ServicePanel />} />

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { Form, Button, Container, Alert, Nav } from "react-bootstrap";
 import { useNavigate, Link } from "react-router-dom";
 import Select from "react-select";
 import GlobalStyle from "../GlobalStyle";
+import apiClient from "../api/axios";
 
 const customSelectStyles = {
   control: (base, state) => ({
@@ -65,10 +65,8 @@ const VaccinationForm = () => {
   const petId = localStorage.getItem("pet_id");
 
   useEffect(() => {
-    axios
-      .get("http://localhost:8000/vaccines/", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+    apiClient.get("/vaccines/", {headers:
+          {Authorization: `Bearer ${token}`,},})
       .then((res) => setVaccines(res.data))
       .catch((err) => {
         console.error(err);
@@ -91,17 +89,11 @@ const VaccinationForm = () => {
     if (!vaccineMatch) return setError("No matching vaccine found");
 
     const requests = Array.from({ length: quantity }).map(() =>
-      axios.post(
-        "http://localhost:8000/vaccinations/",
-        {
-          vaccine_id: vaccineMatch.id,
-          pet_id: Number(petId),
-          appointment_id: Number(appointmentId),
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        }
-      )
+      apiClient.post("/vaccinations/", {
+    vaccine_id: vaccineMatch.id,
+    pet_id: Number(petId),
+    appointment_id: Number(appointmentId),},
+          {headers: {Authorization: `Bearer ${token}`,},})
     );
 
     Promise.all(requests)

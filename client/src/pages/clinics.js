@@ -1,11 +1,10 @@
-
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import { Table, Nav } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import GlobalStyle from "../GlobalStyle";
 import Select from "react-select";
 import "../App.css";
+import apiClient from "../api/axios";
 import { Map, Placemark, useYMaps } from "@pbe/react-yandex-maps";
 
 function ClinicsPage() {
@@ -19,49 +18,49 @@ function ClinicsPage() {
   const token = localStorage.getItem("token");
 
   useEffect(() => {
-    axios
-      .get("http://127.0.0.1:8000/clinics/", {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-      .then((res) => {
+    if (!ymaps) return;
+    ymaps.ready(async () => {
+      setApiReady(true);
+      try {
+        const res = await apiClient.get("/clinics/", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
         const clinics = res.data;
         setAllClinics(clinics);
 
         const uniqueNames = [...new Set(clinics.map((c) => c.name))];
-        const options = uniqueNames.map((name) => ({ value: name, label: name }));
+        setClinicOptions(uniqueNames.map((name) => ({ value: name, label: name })));
 
-        setClinicOptions(options);
+        const geocoded = await Promise.all(
+          clinics.map(async (clinic) => {
+            try {
+              const geo = await ymaps.geocode(clinic.address);
+              const coords = geo.geoObjects.get(0)?.geometry.getCoordinates();
+              return coords ? { ...clinic, coords } : clinic;
+            } catch (e) {
+              console.warn("Failed geocoding:", clinic.address);
+              return clinic;
+            }
+          })
+        );
 
-      })
-      .catch((err) => {
+        setFilteredClinics(geocoded);
+        setAllClinics(geocoded);
+      } catch (err) {
         console.error("Ошибка при загрузке клиник:", err.response?.data || err.message);
-      });
-  }, []);
-
-  useEffect(() => {
-    if (!ymaps) return;
-    ymaps.ready(() => setApiReady(true));
+      }
+    });
   }, [ymaps]);
 
-  const handleSelectChange = async (selected) => {
+  const handleSelectChange = (selected) => {
     setSelectedClinicOption(selected);
-    const filtered = allClinics.filter((c) => c.name === selected?.value);
-    if (!apiReady || filtered.length === 0) return;
-
-    const geocoded = await Promise.all(
-      filtered.map(async (clinic) => {
-        try {
-          const res = await ymaps.geocode(clinic.address);
-          const coords = res.geoObjects.get(0)?.geometry.getCoordinates();
-          console.log("📍", clinic.address, "→", coords);
-          return coords ? { ...clinic, coords } : clinic;
-        } catch (e) {
-          console.warn("Failed geocoding", clinic.address);
-          return clinic;
-        }
-      })
-    );
-    setFilteredClinics(geocoded);
+    if (!selected) {
+      setFilteredClinics(allClinics);
+    } else {
+      const filtered = allClinics.filter((c) => c.name === selected.value);
+      setFilteredClinics(filtered);
+    }
   };
 
   return (
@@ -72,7 +71,6 @@ function ClinicsPage() {
           <Nav.Item><Nav.Link as={Link} to="/pets">Pets</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/appointments">Appointments</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/vaccinations">Vaccinations</Nav.Link></Nav.Item>
-          {/*<Nav.Item><Nav.Link as={Link} to="/medicines">Medicines</Nav.Link></Nav.Item>*/}
           <Nav.Item><Nav.Link as={Link} to="/analysis">Analyses</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/clinics">Clinics</Nav.Link></Nav.Item>
           <Nav.Item><Nav.Link as={Link} to="/add-missing-data">Additional</Nav.Link></Nav.Item>
@@ -90,8 +88,33 @@ function ClinicsPage() {
           placeholder="Select a clinic"
         />
 
+         <Map state={{ center: [55.75, 37.57], zoom: 9 }} width="100%" height="500px">
+          {filteredClinics.map((clinic, i) =>
+            clinic.coords ? (
+            <Placemark
+              key={i}
+              geometry={clinic.coords}
+              properties={{
+                hintContent: clinic.name,
+                balloonContent: `<strong>${clinic.address}</strong>`
+              }}
+              options={{
+                preset: "islands#blueIcon",
+                openBalloonOnClick: true
+              }}
+              onClick={() => {
+                const savedForm = JSON.parse(localStorage.getItem("appointment_form") || "{}");
+                const updatedForm = { ...savedForm, clinicId: clinic.id };
+                localStorage.setItem("appointment_form", JSON.stringify(updatedForm));
+                window.location.href = "/appointments";
+              }}
+            />
+            ) : null
+          )}
+        </Map>
+
         {filteredClinics.length === 0 ? (
-          <p>No clinics found for <strong>{selectedClinicOption?.label}</strong>.</p>
+          <p>No clinics found{selectedClinicOption ? ` for "${selectedClinicOption.label}"` : ""}.</p>
         ) : (
           <Table className="custom-table">
             <thead>
@@ -121,21 +144,6 @@ function ClinicsPage() {
             </tbody>
           </Table>
         )}
-
-        <Map state={{ center: [55.75, 37.57], zoom: 9 }} width="100%" height="500px">
-          {filteredClinics.map((clinic, i) =>
-            clinic.coords ? (
-              <Placemark
-                key={i}
-                geometry={clinic.coords}
-                properties={{
-                  hintContent: clinic.name,
-                  balloonContent: `<strong>${clinic.address}</strong>`,
-                }}
-              />
-            ) : null
-          )}
-        </Map>
       </div>
     </>
   );

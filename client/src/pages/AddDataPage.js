@@ -2,8 +2,8 @@ import React, { useState } from "react";
 import { Nav, Card, Modal, Form, Alert } from "react-bootstrap";
 import { Link } from "react-router-dom";
 import GlobalStyle from "../GlobalStyle";
-import axios from "axios";
 import "../App.css";
+import apiClient from "../api/axios";
 
 const AddDataPage = () => {
   const token = localStorage.getItem("token");
@@ -49,7 +49,8 @@ const [form, setForm] = useState({
     setMessage("Unknown type for addition.");
     return;
   }
-await axios.post(`http://127.0.0.1:8000${endpoint}`, payload, { headers });
+  console.log(endpoint);
+await apiClient.post(endpoint, payload, { headers });
       setVariant("success"); setMessage("Added successfully.");
       setModal({ ...modal, show: false });
     } catch (err) {
@@ -60,10 +61,10 @@ await axios.post(`http://127.0.0.1:8000${endpoint}`, payload, { headers });
   const handleDelete = async () => {
     if (!deleteName.trim()) return;
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/${modal.type}/`, { headers });
+      const res = await apiClient.get(`${modal.type}/`, { headers });
       const match = res.data.find((item) => item.name.toLowerCase() === deleteName.toLowerCase());
       if (!match) return setVariant("danger"); setMessage("Item not found.");
-      await axios.delete(`http://127.0.0.1:8000/${modal.type}/${match.id}`, { headers });
+      await apiClient.delete(`${modal.type}/${match.id}`, { headers });
       setVariant("success"); setMessage("Deleted successfully.");
       setModal({ ...modal, show: false });
     } catch (err) {
@@ -73,7 +74,7 @@ await axios.post(`http://127.0.0.1:8000${endpoint}`, payload, { headers });
 
   const handleEdit = async () => {
     try {
-      const res = await axios.get(`http://127.0.0.1:8000/${modal.type}/`, { headers });
+      const res = await apiClient.get(`${modal.type}/`, { headers });
       const match = res.data.find((item) => item.name.toLowerCase() === searchName.toLowerCase());
       if (!match) return setVariant("danger"); setMessage("Item not found.");
 
@@ -88,7 +89,7 @@ await axios.post(`http://127.0.0.1:8000${endpoint}`, payload, { headers });
       const requiredFieldsFilled = Object.values(payload).every((val) => val.trim() !== "");
       if (!requiredFieldsFilled) return setVariant("danger"); setMessage("Please fill in all fields.");
 
-      await axios.put(`http://127.0.0.1:8000/${modal.type}/${match.id}`, payload, { headers });
+      await apiClient.put(`${modal.type}/${match.id}`, payload, { headers });
       setVariant("success"); setMessage("Updated successfully.");
       setModal({ ...modal, show: false, step: 1 });
     } catch (err) {
@@ -290,7 +291,7 @@ await axios.post(`http://127.0.0.1:8000${endpoint}`, payload, { headers });
       </Form.Group>
       <div className="custom-btn pastel-green mt-3" onClick={async () => {
         try {
-          const res = await axios.get(`http://127.0.0.1:8000/${modal.type}/`, { headers });
+          const res = await apiClient.get(`${modal.type}/`, { headers });
           const match = res.data.find((item) =>
             item.name.toLowerCase() === searchName.toLowerCase()
           );
@@ -354,9 +355,6 @@ await axios.post(`http://127.0.0.1:8000${endpoint}`, payload, { headers });
     </>
   )}
 </Modal.Body>
-
-
-
         <Modal.Footer>
           <div className="custom-btn pastel-pink" onClick={() => setModal({ ...modal, show: false })}>Cancel</div>
           {modal.mode === "edit" && modal.step === 1 ? (

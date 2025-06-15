@@ -53,12 +53,12 @@ class Appointment(Base):
     clinic_id = Column(Integer, ForeignKey("veterinary_clinics.id"))
     status = Column(String)
 
-    pet = relationship("Pet", back_populates="appointments")  # ✅ обязательно
+    pet = relationship("Pet", back_populates="appointments")
     clinic = relationship("VeterinaryClinic", back_populates="appointments")
     analyses = relationship("Analysis", back_populates="appointment", cascade="all, delete-orphan")
     vaccinations = relationship("Vaccination", back_populates="appointment", cascade="all, delete-orphan")
     conclusion_status = Column(String, default="pending")
-
+    conclusion = Column(String, nullable=True)
 
 class VeterinaryClinic(Base):
     __tablename__ = "veterinary_clinics"
